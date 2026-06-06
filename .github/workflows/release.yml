@@ -11,9 +11,6 @@ jobs:
     name: Update modib/homebrew-forge
     needs: [test]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: /tmp/homebrew-forge
     steps:
       - name: Compute tarball SHA256
         run: |
@@ -26,16 +23,19 @@ jobs:
 
       - name: Clone homebrew-forge tap
         run: |
-          rm -rf ./*
+          mkdir -p /tmp/homebrew-forge
+          cd /tmp/homebrew-forge
           git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/modib/homebrew-forge.git .
 
       - name: Update formula
+        working-directory: /tmp/homebrew-forge
         run: |
           VERSION=${TAG#v}
           sed -i "s|archive/refs/tags/v[0-9.]*\.tar\.gz|archive/refs/tags/$TAG.tar.gz|" Formula/ws-cli.rb
           sed -i "s/sha256 \".*\"/sha256 \"$SHA256\"/" Formula/ws-cli.rb
 
       - name: Commit and push
+        working-directory: /tmp/homebrew-forge
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
