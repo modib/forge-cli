@@ -119,7 +119,7 @@ def get_status(path):
     last_commit_time = parts[1] if len(parts) > 1 else ""
     last_commit_msg = parts[2] if len(parts) > 2 else ""
     return {
-        "branch": branch if branch else "detached",
+        "branch": "detached" if branch == "HEAD" else (branch if branch else "detached"),
         "dirty": dirty,
         "changed_files": changed_files,
         "ahead": ahead,

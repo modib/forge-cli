@@ -1,0 +1,131 @@
+import json
+import pytest
+
+pytest.importorskip("mcp")
+
+
+@pytest.fixture
+def server():
+    from ws.server import app
+    return app
+
+
+class TestListTools:
+    def test_list_tools_returns_expected(self):
+        from ws.server import list_tools
+        import asyncio
+        tools = asyncio.run(list_tools())
+        names = [t.name for t in tools]
+        assert "list_repos" in names
+        assert "repo_status" in names
+        assert "workspace_status" in names
+        assert "workspace_health" in names
+        assert "clone_repo" in names
+        assert "workspace_scan" in names
+        assert "create_feature" in names
+        assert "list_features" in names
+        assert "log_decision" in names
+        assert "get_decisions" in names
+        assert "start_session" in names
+        assert "share_note" in names
+        assert "get_shared_notes" in names
+        assert len(names) == 13
+
+    def test_tool_has_schema(self):
+        from ws.server import list_tools
+        import asyncio
+        tools = asyncio.run(list_tools())
+        for t in tools:
+            assert t.inputSchema is not None
+
+
+class TestCallTool:
+    @pytest.mark.asyncio
+    async def test_list_repos_empty(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("list_repos", {})
+        assert len(result) == 1
+        data = json.loads(result[0].text)
+        assert data == []
+
+    @pytest.mark.asyncio
+    async def test_workspace_status(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("workspace_status", {})
+        assert len(result) == 1
+        data = json.loads(result[0].text)
+        assert data["total_repos"] == 0
+
+    @pytest.mark.asyncio
+    async def test_list_features_empty(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("list_features", {})
+        assert len(result) == 1
+        data = json.loads(result[0].text)
+        assert data == []
+
+    @pytest.mark.asyncio
+    async def test_unknown_tool(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("nonexistent", {})
+        assert "Unknown tool" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_repo_status_not_found(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("repo_status", {"name": "no-such-repo"})
+        assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_create_feature(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("create_feature", {"name": "test-feat", "repos": []})
+        data = json.loads(result[0].text)
+        assert data["name"] == "test-feat"
+        assert data["id"].startswith("feat-")
+
+    @pytest.mark.asyncio
+    async def test_share_and_get_notes(self, ws_config):
+        from ws.server import call_tool
+        await call_tool("share_note", {"content": "test note", "group": "g2", "label": "mylabel"})
+        result = await call_tool("get_shared_notes", {"group": "g2"})
+        data = json.loads(result[0].text)
+        assert len(data) == 1
+        assert data[0]["content"] == "test note"
+
+    @pytest.mark.asyncio
+    async def test_log_and_get_decisions(self, ws_config):
+        from ws.server import call_tool
+        feat = await call_tool("create_feature", {"name": "dec-test", "repos": []})
+        fid = json.loads(feat[0].text)["id"]
+        await call_tool("log_decision", {"feature_id": fid, "message": "use postgres", "type": "breaking", "author": "alice"})
+        result = await call_tool("get_decisions", {"feature_id": fid})
+        data = json.loads(result[0].text)
+        assert len(data) == 1
+        assert data[0]["message"] == "use postgres"
+
+    @pytest.mark.asyncio
+    async def test_log_decision_missing_feature(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("log_decision", {"feature_id": "feat-noexist", "message": "x", "type": "info", "author": "me"})
+        assert "not found" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_get_decisions_missing_feature(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("get_decisions", {"feature_id": "feat-noexist"})
+        assert result[0].text == "[]"
+
+    @pytest.mark.asyncio
+    async def test_start_session(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("start_session", {"agent": "claude-code", "context": "fix auth", "feature_id": ""})
+        data = json.loads(result[0].text)
+        assert data["session_id"].startswith("sess-")
+
+    @pytest.mark.asyncio
+    async def test_error_returns_text(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("repo_status", {"name": None})
+        assert len(result) == 1
+        assert isinstance(result[0].text, str)

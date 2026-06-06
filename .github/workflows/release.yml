@@ -4,8 +4,12 @@ on:
     types: [published]
 
 jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
   bump-tap:
     name: Update modib/homebrew-forge
+    needs: [test]
     runs-on: ubuntu-latest
     defaults:
       run:
