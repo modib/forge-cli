@@ -1,5 +1,9 @@
 # Architecture
 
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+
+---
+
 ## Overview
 
 ws is organized as three layers:
@@ -85,4 +89,9 @@ Agent                    ws serve
 │   └── <feature-id>/
 │       └── <repo>/      # git worktree
 └── project-card.json    # Cached ws status --json output
+```
+
+---
+
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
 ```

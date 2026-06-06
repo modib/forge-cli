@@ -1,5 +1,9 @@
 # Getting Started
 
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+
+---
+
 ## Prerequisites
 
 - [Homebrew](https://brew.sh) (recommended) or [pipx](https://pipx.pypa.io) for installation
@@ -118,3 +122,7 @@ ws serve
 ```
 
 Starts the MCP stdio server with 13 tools. See the [MCP documentation](./mcp.md) for agent setup.
+
+---
+
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**

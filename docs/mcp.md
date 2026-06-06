@@ -1,5 +1,9 @@
 # MCP Server
 
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+
+---
+
 The `ws serve` command starts an MCP (Model Context Protocol) server over stdio. Any MCP-compatible AI agent — Claude Code, Codex CLI, Gemini CLI, Cursor — can connect and call workspace tools.
 
 ## Quick Start
@@ -160,3 +164,7 @@ ws uses the [Model Context Protocol](https://modelcontextprotocol.io) over stdio
 2. Responds with server capabilities (13 tools)
 3. Handles `tools/list` and `tools/call` requests
 4. Returns results as `TextContent` in JSON-RPC responses
+
+---
+
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**

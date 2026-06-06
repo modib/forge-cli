@@ -1,5 +1,9 @@
 # ws CLI Documentation
 
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+
+---
+
 ws is the cross-project workspace CLI for [Forge](https://github.com/forge/forge). It manages git repos in `~/Workspace`, shares context across projects, and exposes all operations as MCP tools for AI agents.
 
 ## Quick Links
@@ -44,4 +48,8 @@ ws status
 
 ## Project Status
 
-ws CLI is in active development (v0.1). See the [roadmap](../ROADMAP.md) for what's coming.
+ws CLI is in active development (v0.2). See the [roadmap](../ROADMAP.md) for what's coming.
+
+---
+
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**

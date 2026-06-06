@@ -1,5 +1,9 @@
 # CLI Reference
 
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+
+---
+
 ## Global Options
 
 | Flag | Description |
@@ -140,3 +144,7 @@ ws config
 ```
 
 Prints the absolute path to `~/.workspace/config.json`.
+
+---
+
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
