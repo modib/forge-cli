@@ -7,6 +7,7 @@ from . import engine
 from . import git
 from . import graph as wsgraph
 from . import install as wsinstall
+from . import ai as wsai
 
 
 def cmd_init(args):
@@ -652,6 +653,50 @@ end
         return f"echo 'Unsupported shell: {shell}'"
 
 
+def cmd_ai(args):
+    action = args.action
+    if action == "detect":
+        wsai.detect_and_print(args)
+    elif action == "config":
+        wsai.ai_config_cmd(args)
+    elif action == "setup":
+        result = wsai.setup_ollama(model=args.model)
+        if "error" in result:
+            print(f"\033[31m{result['error']}\033[0m")
+        else:
+            for line in result.get("log", []):
+                print(line)
+            if result.get("ollama_installed"):
+                print("\033[32m✓\033[0m Ollama installed")
+            if result.get("model_pulled"):
+                print(f"\033[32m✓\033[0m Model pulled: {result['model_pulled']}")
+    elif action == "benchmark":
+        result = wsai.benchmark_model(model=args.model, prompt=args.prompt)
+        if "error" in result:
+            print(f"\033[31m{result['error']}\033[0m")
+        else:
+            print(f"Model: \033[36m{result['model']}\033[0m")
+            print(f"Prompt: {result['prompt'][:80]}...")
+            print(f"Response length: {result['response_length']} chars")
+            print(f"Latency: \033[33m{result['latency_ms']}ms\033[0m")
+            print(f"Tokens/sec: \033[33m{result['tokens_per_sec']}\033[0m")
+
+
+def cmd_exec(args):
+    query = args.query
+    result = wsai.exec_nl(query, dry_run=args.dry_run)
+    if "error" in result:
+        print(f"\033[31m{result['error']}\033[0m")
+        return
+    if args.dry_run:
+        print(f"\033[36mIntent:\033[0m {result.get('intent', '?')}")
+        print(f"\033[36mCommand:\033[0m {result.get('command', '?')}")
+        return
+    print(f"\033[90m$ {result.get('command', '')}\033[0m")
+    if result.get("output"):
+        print(result["output"])
+
+
 def cmd_serve(args):
     import asyncio
     from .server import run_server
@@ -753,6 +798,18 @@ def main():
     p_completion = sub.add_parser("completion", help="Generate shell completion script")
     p_completion.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
 
+    p_ai = sub.add_parser("ai", help="AI integration commands")
+    p_ai.add_argument("action", choices=["detect", "setup", "config", "benchmark"])
+    p_ai.add_argument("--model", default="", help="Model name")
+    p_ai.add_argument("--prompt", default="Hello", help="Benchmark prompt")
+    p_ai.add_argument("--json", action="store_true", help="Output as JSON")
+    p_ai.add_argument("key", nargs="?", help="Config key for set/unset")
+    p_ai.add_argument("value", nargs="?", help="Config value for set")
+
+    p_exec = sub.add_parser("exec", help="Execute natural language workspace command")
+    p_exec.add_argument("query", help="Natural language query")
+    p_exec.add_argument("--dry-run", action="store_true", help="Show intent without executing")
+
     args = parser.parse_args()
 
     if args.version:
@@ -784,6 +841,8 @@ def main():
         "serve": cmd_serve,
         "config": cmd_config_path,
         "completion": cmd_completion,
+        "ai": cmd_ai,
+        "exec": cmd_exec,
     }
     cmds[args.command](args)
 

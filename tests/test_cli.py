@@ -1,6 +1,6 @@
 import argparse
 import json
-from ws.cli import cmd_completion, cmd_status, cmd_health, cmd_config_path, cmd_scan, cmd_init, cmd_share, cmd_notes, cmd_feature, cmd_doctor, cmd_pr, cmd_graph, cmd_log
+from ws.cli import cmd_ai, cmd_exec, cmd_completion, cmd_status, cmd_health, cmd_config_path, cmd_scan, cmd_init, cmd_share, cmd_notes, cmd_feature, cmd_doctor, cmd_pr, cmd_graph, cmd_log
 
 
 def _ns(**kw):
@@ -301,3 +301,45 @@ class TestCmdPr:
         assert "repo-b" in output
         assert "pull/1" in output
         assert "cross-ref" in output
+
+
+class TestCmdAiDetect:
+    def test_detect_json(self, ws_config, captured_print):
+        cmd_ai(_ns(action="detect", json=True, model="", prompt="", key=None, value=None))
+        output = " ".join(captured_print)
+        assert "cpu" in output
+        assert "memory" in output
+
+    def test_detect_text(self, ws_config, captured_print):
+        cmd_ai(_ns(action="detect", json=False, model="", prompt="", key=None, value=None))
+        output = " ".join(captured_print)
+        assert "Hardware Profile" in output
+        assert "CPU" in output
+
+
+class TestCmdAiConfig:
+    def test_config_show(self, ws_config, captured_print):
+        c = ws_config.load_config()
+        c["ai"] = {"provider": "ollama"}
+        ws_config.save_config(c)
+        cmd_ai(_ns(action="config", json=False, model="", prompt="", key=None, value=None))
+        output = " ".join(captured_print)
+        assert "ollama" in output
+
+    def test_config_set(self, ws_config, captured_print):
+        cmd_ai(_ns(action="config", json=False, model="", prompt="", key="provider", value="ollama"))
+        output = " ".join(captured_print)
+        assert "provider" in output
+
+
+class TestCmdExec:
+    def test_exec_unknown(self, captured_print):
+        cmd_exec(_ns(query="do something impossible", dry_run=False))
+        output = " ".join(captured_print)
+        assert "Could not understand" in output
+
+    def test_exec_dry_run(self, captured_print):
+        cmd_exec(_ns(query="status", dry_run=True))
+        output = " ".join(captured_print)
+        assert "Intent:" in output
+        assert "ws status" in output

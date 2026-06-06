@@ -34,7 +34,10 @@ class TestListTools:
         assert "generate_graph" in names
         assert "validate_config" in names
         assert "generate_completion" in names
-        assert len(names) == 18
+        assert "ai_detect" in names
+        assert "ai_config" in names
+        assert "exec_nl" in names
+        assert len(names) == 21
 
     def test_tool_has_schema(self):
         from ws.server import list_tools
@@ -171,3 +174,44 @@ class TestCallTool:
         from ws.server import call_tool
         result = await call_tool("generate_completion", {"shell": "zsh"})
         assert "#compdef ws" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_ai_detect(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("ai_detect", {})
+        data = json.loads(result[0].text)
+        assert "cpu" in data
+        assert "memory" in data
+        assert "gpu" in data
+
+    @pytest.mark.asyncio
+    async def test_ai_config_show(self, ws_config):
+        from ws.server import call_tool
+        c = ws_config.load_config()
+        c["ai"] = {"provider": "ollama"}
+        ws_config.save_config(c)
+        result = await call_tool("ai_config", {})
+        data = json.loads(result[0].text)
+        assert data["provider"] == "ollama"
+
+    @pytest.mark.asyncio
+    async def test_ai_config_set(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("ai_config", {"key": "provider", "value": "test"})
+        data = json.loads(result[0].text)
+        assert data["provider"] == "test"
+
+    @pytest.mark.asyncio
+    async def test_exec_nl_dry_run(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("exec_nl", {"query": "status", "dry_run": True})
+        data = json.loads(result[0].text)
+        assert data["intent"] == "status"
+        assert data["command"] == "ws status"
+
+    @pytest.mark.asyncio
+    async def test_exec_nl_unknown(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("exec_nl", {"query": "do something crazy", "dry_run": False})
+        data = json.loads(result[0].text)
+        assert "error" in data

@@ -7,6 +7,7 @@ from . import config as cfg
 from . import engine
 from . import git
 from . import graph as wsgraph
+from . import ai as wsai
 from .cli import _completion_script
 
 app = Server("ws")
@@ -206,6 +207,34 @@ async def list_tools() -> list[Tool]:
                 "required": ["shell"],
             },
         ),
+        Tool(
+            name="ai_detect",
+            description="Detect hardware profile (CPU, RAM, GPU, disk)",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="ai_config",
+            description="View or modify AI configuration in workspace config",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Config key (dot-separated for nested)"},
+                    "value": {"type": "string", "description": "Config value (omit to unset)"},
+                },
+            },
+        ),
+        Tool(
+            name="exec_nl",
+            description="Execute a natural language workspace command",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Natural language query"},
+                    "dry_run": {"type": "boolean", "description": "Show intent without executing"},
+                },
+                "required": ["query"],
+            },
+        ),
     ]
 
 
@@ -369,6 +398,33 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "generate_completion":
             script = _completion_script(arguments["shell"])
             return [TextContent(type="text", text=script)]
+
+        elif name == "ai_detect":
+            profile = wsai.detect_hardware()
+            return [TextContent(type="text", text=json.dumps(profile, indent=2))]
+
+        elif name == "ai_config":
+            c = cfg.load_config()
+            ai = c.setdefault("ai", {})
+            key = arguments.get("key")
+            value = arguments.get("value")
+            if key is None:
+                return [TextContent(type="text", text=json.dumps(ai, indent=2))]
+            keys = key.split(".")
+            target = ai
+            for k in keys[:-1]:
+                target = target.setdefault(k, {})
+            if value is not None:
+                target[keys[-1]] = value
+                cfg.save_config(c)
+            elif keys[-1] in target:
+                del target[keys[-1]]
+                cfg.save_config(c)
+            return [TextContent(type="text", text=json.dumps(ai, indent=2))]
+
+        elif name == "exec_nl":
+            result = wsai.exec_nl(arguments["query"], dry_run=arguments.get("dry_run", False))
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
