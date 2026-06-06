@@ -822,7 +822,7 @@ def main():
         try:
             print(f"ws {v('ws-cli')}")
         except ImportError:
-            print("ws 0.2.0")
+            print("ws 0.3.0")
         return
 
     if not args.command:
