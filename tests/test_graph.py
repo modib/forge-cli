@@ -1,4 +1,3 @@
-import os
 import subprocess
 import pytest
 from ws import graph as wsgraph

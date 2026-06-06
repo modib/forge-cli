@@ -1,4 +1,3 @@
-import pytest
 from ws.git import sanitize_url, _detect_provider, run_git, is_git_repo
 
 

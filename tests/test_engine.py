@@ -1,15 +1,12 @@
 import os
-import json
-import pytest
 import subprocess
-from unittest.mock import ANY
 from ws import engine
 
 
 class TestInitWorkspace:
     def test_init_creates_dir(self, ws_config, tmp_workspace):
         ws_dir, ws_root, _ = tmp_workspace
-        c = engine.init_workspace()
+        engine.init_workspace()
         assert os.path.exists(str(ws_dir))
         sessions_dir = os.path.join(str(ws_dir), "sessions")
         assert os.path.exists(sessions_dir)
@@ -24,7 +21,6 @@ class TestScan:
 
     def test_scan_discovers_repo(self, ws_config, tmp_git_repo, tmp_workspace):
         _, ws_root, _ = tmp_workspace
-        import ws.config as cfg
         import shutil
         shutil.move(str(tmp_git_repo), str(ws_root / tmp_git_repo.name))
         added, total = engine.scan_workspace()
@@ -142,7 +138,6 @@ class TestDiagnose:
 
     def test_detects_no_remote(self, ws_config, populated_config, tmp_git_repo):
         import shutil
-        from ws import config as cfg
         ws_root = tmp_git_repo.parent.parent / "Workspace"
         ws_root.mkdir(parents=True, exist_ok=True)
         dest = ws_root / "noremote"
@@ -305,7 +300,6 @@ class TestCreatePrs:
         assert "gh) not found" in result["error"]
 
     def test_branch_not_found(self, ws_config, tmp_git_repo):
-        import ws.config as cfg
         ws_root = tmp_git_repo.parent.parent / "Workspace"
         ws_root.mkdir(parents=True, exist_ok=True)
         c = ws_config.load_config()
@@ -415,7 +409,7 @@ class TestCreatePrs:
         mocker.patch("shutil.which", return_value="/usr/bin/gh")
         mock_run = mocker.patch("subprocess.run")
         mock_run.return_value = subprocess.CompletedProcess([], 0, stdout="https://github.com/test/my-repo/pull/3\n", stderr="")
-        result = engine.create_prs("custom", title="Custom Title", body="Custom body text")
+        engine.create_prs("custom", title="Custom Title", body="Custom body text")
         call_args = mock_run.call_args_list
         gh_create_calls = [c for c in call_args if c[0][0][:3] == ["gh", "pr", "create"]]
         assert len(gh_create_calls) == 1

@@ -94,7 +94,7 @@ def cmd_status(args):
         if dirty_map:
             impacts = wsgraph.cross_repo_impact(dirty_map)
             if impacts:
-                print(f"\n\033[36mCross-repo impact:\033[0m")
+                print("\n\033[36mCross-repo impact:\033[0m")
                 for imp in impacts:
                     print(f"  {imp['repo_a']} ↔ {imp['repo_b']}  (\033[33m{imp['shared_count']} shared files\033[0m)")
                     for f in imp["shared_files"][:5]:
@@ -232,7 +232,7 @@ def cmd_feature(args):
             print(f"  Removed worktrees: {', '.join(result['removed_worktrees'])}")
         if result["failed_worktrees"]:
             print(f"  \033[33mFailed to remove: {', '.join(result['failed_worktrees'])}\033[0m")
-        print(f"  Feature removed from workspace config")
+        print("  Feature removed from workspace config")
     else:
         print(f"Unknown feature command: {action}")
 
@@ -664,7 +664,7 @@ def cmd_config_path(args):
         if result["valid"]:
             print("\033[32mConfig is valid\033[0m")
         else:
-            print(f"\033[31mConfig has errors\033[0m")
+            print("\033[31mConfig has errors\033[0m")
         for issue in result["issues"]:
             sev = issue["severity"]
             if sev == "error":
@@ -677,7 +677,7 @@ def cmd_config_path(args):
             label += f" [{issue.get('feature', '')}]" if issue.get("feature") else ""
             print(f"  {marker}{label} {issue['detail']}")
         if args.fix and result.get("_repaired"):
-            print(f"\n\033[32mRepaired:\033[0m")
+            print("\n\033[32mRepaired:\033[0m")
             for r in result["_repaired"]:
                 print(f"  \033[32m✓\033[0m {r}")
     else:
@@ -693,7 +693,7 @@ def main():
     p_init = sub.add_parser("init", help="Initialize workspace config")
     p_init.add_argument("--provider", choices=["github", "gitlab"], help="Auth provider")
 
-    p_scan = sub.add_parser("scan", help="Discover repos in workspace root")
+    sub.add_parser("scan", help="Discover repos in workspace root")
 
     p_status = sub.add_parser("status", help="Show workspace status")
     p_status.add_argument("name", nargs="?", help="Show status for a specific repo")
@@ -704,7 +704,7 @@ def main():
     p_clone.add_argument("url", help="Repository URL")
     p_clone.add_argument("--name", "-n", help="Override repo name")
 
-    p_health = sub.add_parser("health", help="Check dev environment health")
+    sub.add_parser("health", help="Check dev environment health")
 
     p_doctor = sub.add_parser("doctor", help="Diagnose workspace issues")
     p_doctor.add_argument("--json", action="store_true", help="Output as JSON")
@@ -723,7 +723,7 @@ def main():
     p_notes = sub.add_parser("notes", help="List shared notes")
     p_notes.add_argument("group", nargs="?", default="default", help="Group name")
 
-    p_serve = sub.add_parser("serve", help="Start MCP server (stdio)")
+    sub.add_parser("serve", help="Start MCP server (stdio)")
 
     p_log = sub.add_parser("log", help="View agent session history")
     p_log.add_argument("name", nargs="?", help="Session ID to view details")
@@ -759,7 +759,7 @@ def main():
         from importlib.metadata import version as v
         try:
             print(f"ws {v('ws-cli')}")
-        except:
+        except ImportError:
             print("ws 0.2.0")
         return
 

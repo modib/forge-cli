@@ -2,7 +2,7 @@ import json
 import os
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, LoggingLevel
+from mcp.types import Tool, TextContent
 from . import config as cfg
 from . import engine
 from . import git
@@ -235,17 +235,17 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         elif name == "clone_repo":
             url = arguments["url"]
-            name = arguments.get("name")
+            clone_name: str | None = arguments.get("name")
             target = cfg.WORKSPACE_ROOT
-            if not name:
-                name = url.rstrip("/").split("/")[-1]
-                if name.endswith(".git"):
-                    name = name[:-4]
-            result = git.clone(url, target, name)
+            if not clone_name:
+                clone_name = url.rstrip("/").split("/")[-1]
+                if clone_name.endswith(".git"):
+                    clone_name = clone_name[:-4]
+            result = git.clone(url, target, clone_name)
             if result.startswith("error"):
                 return [TextContent(type="text", text=result)]
             repo = {
-                "name": name,
+                "name": clone_name,
                 "path": result,
                 "provider": git._detect_provider(url),
                 "url": url,
@@ -254,7 +254,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             c = cfg.load_config()
             cfg.add_repo(c, repo)
             cfg.save_config(c)
-            return [TextContent(type="text", text=json.dumps({"status": "cloned", "path": result, "name": name}))]
+            return [TextContent(type="text", text=json.dumps({"status": "cloned", "path": result, "name": clone_name}))]
 
         elif name == "workspace_scan":
             added, total = engine.scan_workspace()

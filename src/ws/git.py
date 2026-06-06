@@ -1,6 +1,5 @@
 import os
 import subprocess
-import re
 
 
 def run_git(path, *args):
@@ -81,7 +80,7 @@ def get_status(path):
     branch, _, _ = run_git(path, "rev-parse", "--abbrev-ref", "HEAD")
     stdout, _, _ = run_git(path, "status", "--porcelain")
     dirty = bool(stdout.strip())
-    changed_files = len([l for l in stdout.split("\n") if l.strip()]) if stdout else 0
+    changed_files = len([line for line in stdout.split("\n") if line.strip()]) if stdout else 0
 
     stdout, _, _ = run_git(path, "remote")
     has_remote = bool(stdout.strip())

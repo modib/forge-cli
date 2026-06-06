@@ -1,6 +1,5 @@
 import json
 import os
-import pytest
 from unittest.mock import mock_open
 from ws import install
 
@@ -55,7 +54,7 @@ class TestInstallAgent:
 
     def test_install_timeout(self, mocker):
         mocker.patch("shutil.which", side_effect=lambda x: f"/usr/bin/{x}" if x in ("node", "npm") else None)
-        mock_run = mocker.patch("subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("cmd", 30))
+        mocker.patch("subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("cmd", 30))
         result = install.install_agent("codex")
         assert "error" in result
 

@@ -1,6 +1,5 @@
 import argparse
 import json
-import pytest
 from ws.cli import cmd_completion, cmd_status, cmd_health, cmd_config_path, cmd_scan, cmd_init, cmd_share, cmd_notes, cmd_feature, cmd_doctor, cmd_pr, cmd_graph, cmd_log
 
 

@@ -102,7 +102,7 @@ def _get_gh_user():
     try:
         r = subprocess.run(["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True, timeout=10)
         return r.stdout.strip() if r.returncode == 0 else ""
-    except:
+    except Exception:
         return ""
 
 
