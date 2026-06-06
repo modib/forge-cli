@@ -55,19 +55,64 @@ def _detect_provider(url):
     return "other"
 
 
+def sanitize_url(url):
+    """Strip credentials from a remote URL for safe display."""
+    if not url:
+        return ""
+    if url.startswith("https://"):
+        rest = url[8:]
+        if "@" in rest:
+            rest = rest.split("@", 1)[1]
+        return rest
+    if url.startswith("git@"):
+        rest = url[4:].replace(":", "/", 1)
+        return rest
+    if url.startswith("ssh://"):
+        rest = url[6:]
+        if "@" in rest:
+            rest = rest.split("@", 1)[1]
+        return rest
+    if "@" in url:
+        url = url.split("@", 1)[1]
+    return url
+
+
 def get_status(path):
     branch, _, _ = run_git(path, "rev-parse", "--abbrev-ref", "HEAD")
     stdout, _, _ = run_git(path, "status", "--porcelain")
     dirty = bool(stdout.strip())
     changed_files = len([l for l in stdout.split("\n") if l.strip()]) if stdout else 0
-    stdout, _, _ = run_git(path, "rev-list", "--left-right", "--count",
-                           f"HEAD...origin/{branch}" if branch != "HEAD" else "HEAD...origin/main")
+
+    stdout, _, _ = run_git(path, "remote")
+    has_remote = bool(stdout.strip())
+    remote_name = stdout.split("\n")[0].strip() if has_remote else ""
+
+    remote_url = ""
+    if has_remote:
+        remote_url, _, _ = run_git(path, "remote", "get-url", remote_name)
+
+    upstream_branch = ""
+    has_upstream = False
+    if branch != "HEAD":
+        stdout, _, rc = run_git(path, "rev-parse", "--abbrev-ref", f"{branch}@{{u}}")
+        if rc == 0 and stdout.strip():
+            upstream_branch = stdout.strip()
+            has_upstream = True
+
     ahead = behind = 0
-    if stdout:
-        parts = stdout.split()
-        if len(parts) >= 2:
-            ahead = int(parts[0])
-            behind = int(parts[1])
+    tracking = ""
+    if has_upstream:
+        tracking = upstream_branch
+    elif has_remote and branch != "HEAD":
+        tracking = f"{remote_name}/{branch}"
+    if tracking:
+        stdout, _, _ = run_git(path, "rev-list", "--left-right", "--count", f"HEAD...{tracking}")
+        if stdout:
+            parts = stdout.split()
+            if len(parts) >= 2:
+                ahead = int(parts[0])
+                behind = int(parts[1])
+
     stdout, _, _ = run_git(path, "log", "-1", "--format=%H|%ai|%s")
     parts = stdout.split("|", 2) if stdout else ["", "", ""]
     last_commit_hash = parts[0] if len(parts) > 0 else ""
@@ -82,6 +127,11 @@ def get_status(path):
         "last_commit_hash": last_commit_hash,
         "last_commit_time": last_commit_time,
         "last_commit_msg": last_commit_msg,
+        "has_remote": has_remote,
+        "remote_name": remote_name,
+        "remote_url": remote_url,
+        "has_upstream": has_upstream,
+        "upstream_branch": upstream_branch,
     }
 
 

@@ -64,10 +64,26 @@ def cmd_status(args):
         ahead_behind = ""
         if r.get("ahead", 0) > 0 or r.get("behind", 0) > 0:
             ahead_behind = f" \033[32m+{r['ahead']}\033[0m/\033[31m-{r['behind']}\033[0m"
+
+        has_remote = r.get("has_remote", False)
+        remote_url = r.get("remote_url", "")
+        has_upstream = r.get("has_upstream", False)
+        if has_remote and remote_url:
+            d = git.sanitize_url(remote_url)
+            if d.endswith(".git"):
+                d = d[:-4]
+            remote_str = f"  \033[36m⇄\033[0m {d}"
+            if not has_upstream:
+                remote_str += " \033[90m(no tracking)\033[0m"
+        elif has_remote:
+            remote_str = f"  \033[36m⇄\033[0m {r['remote_name']} \033[90m(no url)\033[0m"
+        else:
+            remote_str = "  \033[90m○\033[0m"
+
         last = r.get("last_commit_msg", "")
         if len(last) > 50:
             last = last[:47] + "..."
-        print(f"  {name}{dirty_mark}  \033[36m{branch}\033[0m{ahead_behind}")
+        print(f"  {name}{dirty_mark}  \033[36m{branch}\033[0m{ahead_behind}{remote_str}")
         if last:
             print(f"    {last}")
 
