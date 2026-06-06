@@ -1,6 +1,6 @@
 # ws CLI Roadmap
 
-## v0.1 — Workspace Foundation (Current)
+## v0.1 — Workspace Foundation
 
 **Core CLI + MCP server for workspace operations.**
 
@@ -16,8 +16,8 @@
 - [x] Session artifacts: `~/.workspace/sessions/<id>/`
 - [x] Homebrew tap: `brew install modib/forge/ws-cli`
 - [x] CI/CD (pytest — 99 tests, CI gate before release)
+- [x] Lint + typecheck (ruff, mypy)
 - [ ] GitHub Pages docs site
-- [ ] Lint + typecheck (ruff, mypy)
 
 ## v0.2 — Production Workflows
 
@@ -35,14 +35,16 @@
 
 ## v0.3 — AI Integration
 
-**Local model for NL workspace operations.**
+**Hardware-aware AI provisioning with dual backend (Ollama + MLX).**
 
-- [ ] Hardware detection: `ws ai detect` → CPU/RAM/GPU profile
-- [ ] AI provisioning: `ws ai setup` → Ollama + model install
-- [ ] NL Router: `ws exec "show me dirty repos"` → 3B model → structured command
-- [ ] `ws ai config` — view/edit AI routing table
+- [x] `ws ai detect` — hardware probe (CPU, RAM, GPU, disk, Apple Silicon, MLX)
+- [x] `ws ai setup` — auto-install Ollama or MLX, suggest model
+- [x] `ws exec "show dirty repos"` — NL router with intent mapping
+- [x] `ws ai config` — view/edit AI routing config
+- [x] `ws ai benchmark` — inference speed test (ollama + mlx backends)
+- [x] Apple Silicon detection + MLX backend support (M1–M4 unified memory)
+- [x] Dual model suggestion: Ollama (GGUF) on Intel/Linux, MLX (safetensors) on Apple Silicon
 - [ ] Model routing: local ↔ BYO key ↔ GitHub Models free tier
-- [ ] `ws ai benchmark` — inference speed test
 - [ ] Session packing: `ws session summarize <id>` → compact context
 
 ## v0.4 — Agent Handoff & Dashboard

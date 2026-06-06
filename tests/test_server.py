@@ -37,7 +37,9 @@ class TestListTools:
         assert "ai_detect" in names
         assert "ai_config" in names
         assert "exec_nl" in names
-        assert len(names) == 21
+        assert "ai_setup" in names
+        assert "ai_benchmark" in names
+        assert len(names) == 23
 
     def test_tool_has_schema(self):
         from ws.server import list_tools
@@ -215,3 +217,17 @@ class TestCallTool:
         result = await call_tool("exec_nl", {"query": "do something crazy", "dry_run": False})
         data = json.loads(result[0].text)
         assert "error" in data
+
+    @pytest.mark.asyncio
+    async def test_ai_setup_ollama(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("ai_setup", {"backend": "ollama"})
+        data = json.loads(result[0].text)
+        assert data.get("backend") == "ollama"
+
+    @pytest.mark.asyncio
+    async def test_ai_benchmark_no_model(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("ai_benchmark", {})
+        data = json.loads(result[0].text)
+        assert "error" in data or "model" in data

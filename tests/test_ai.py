@@ -42,6 +42,7 @@ class TestDetectHardware:
     def test_json_output_parses(self, capsys):
         class FakeArgs:
             json = True
+            backend = ""
         ai.detect_and_print(FakeArgs())
         captured = capsys.readouterr()
         data = json.loads(captured.out)
@@ -50,11 +51,6 @@ class TestDetectHardware:
 
 
 class TestSuggestModel:
-    def test_suggests_nvidia_model(self):
-        profile = {"memory": {"total_gb": 8}, "gpu": [{"vendor": "nvidia", "model": "RTX 4060"}]}
-        model = ai.suggest_model(profile)
-        assert model == "qwen2.5-coder:1.5b"
-
     def test_suggests_large_model_for_16gb(self):
         profile = {"memory": {"total_gb": 16}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
@@ -69,6 +65,31 @@ class TestSuggestModel:
         profile = {"memory": {"total_gb": 4}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
         assert model == "qwen2.5-coder:1.5b"
+
+    def test_suggests_apple_silicon_mlx_large(self):
+        profile = {"memory": {"total_gb": 16}, "apple_silicon": True}
+        model = ai.suggest_model(profile, backend="mlx")
+        assert "7B" in model or "7b" in model
+
+    def test_suggests_apple_silicon_mlx_8gb(self):
+        profile = {"memory": {"total_gb": 8}, "apple_silicon": True}
+        model = ai.suggest_model(profile, backend="mlx")
+        assert "7B" in model or "7b" in model
+
+    def test_suggests_apple_silicon_mlx_low_ram(self):
+        profile = {"memory": {"total_gb": 4}, "apple_silicon": True}
+        model = ai.suggest_model(profile, backend="mlx")
+        assert model == "Qwen2.5-Coder-1.5B-Instruct"
+
+    def test_suggests_apple_silicon_auto_backend(self):
+        profile = {"memory": {"total_gb": 8}, "apple_silicon": True}
+        backend = ai._recommend_backend(profile)
+        assert backend == "mlx"
+
+    def test_suggests_intel_auto_backend(self):
+        profile = {"memory": {"total_gb": 8}, "apple_silicon": False}
+        backend = ai._recommend_backend(profile)
+        assert backend == "ollama"
 
 
 class TestCheckOllama:

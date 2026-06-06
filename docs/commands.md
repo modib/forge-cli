@@ -137,13 +137,97 @@ Exposes 13 tools over stdio for MCP-compatible AI agents. See [MCP server docs](
 
 ### `ws config`
 
-Show config file path.
+Show config file path or validate workspace config.
 
 ```bash
 ws config
+ws config validate [--fix]
 ```
 
-Prints the absolute path to `~/.workspace/config.json`.
+Prints the absolute path to `~/.workspace/config.json`. With `validate`, checks for issues like missing repos, stale worktrees, and duplicate entries; `--fix` removes stale worktrees.
+
+---
+
+### `ws completion`
+
+Generate shell completion script for bash, zsh, or fish.
+
+```bash
+ws completion bash   # → source this in your .bashrc
+ws completion zsh    # → place in a compdef directory
+ws completion fish   # → source this in config.fish
+```
+
+---
+
+### `ws ai detect`
+
+Probe hardware and suggest AI backend + model.
+
+```bash
+ws ai detect                     # Text output
+ws ai detect --json              # Machine-readable JSON
+ws ai detect --backend mlx       # Show suggestion for MLX backend
+```
+
+Detects: CPU model/cores, RAM total/available, NVIDIA/AMD/Apple GPU, disk space, Apple Silicon, MLX availability. Recommends a backend (`ollama` for Intel/Linux, `mlx` for Apple Silicon) and a model size.
+
+---
+
+### `ws ai setup`
+
+Install AI backend and pull a model.
+
+```bash
+ws ai setup                           # Auto-detect backend
+ws ai setup --backend ollama          # Install Ollama + model
+ws ai setup --backend mlx             # Install MLX + mlx-lm (Apple Silicon only)
+ws ai setup --model qwen2.5-coder:7b  # Specify model
+```
+
+On Intel/Linux: installs Ollama, pulls a GGUF model. On Apple Silicon: installs `mlx` + `mlx-lm` via pip, suggests a safetensors model.
+
+---
+
+### `ws ai config`
+
+View or modify AI routing configuration.
+
+```bash
+ws ai config                          # Show all AI config
+ws ai config backend ollama           # Set backend
+ws ai config routing.local "phi-4-mini:3.8b"  # Set model for local routing
+ws ai config provider                 # Unset/remove a key
+```
+
+Config is stored in `~/.workspace/config.json` under the `ai` key.
+
+---
+
+### `ws ai benchmark`
+
+Run an inference speed test.
+
+```bash
+ws ai benchmark                           # Default model + backend
+ws ai benchmark --backend mlx             # Test MLX backend
+ws ai benchmark --model qwen2.5-coder:7b --prompt "Write a function"
+```
+
+Reports: model, prompt snippet, response length, latency (ms), tokens/sec.
+
+---
+
+### `ws exec`
+
+Execute a natural language workspace command.
+
+```bash
+ws exec "show me dirty repos"           # Run ws status
+ws exec "scan for new repos" --dry-run  # Preview intent without executing
+```
+
+Understands: status, scan, health, doctor, feature list, log, and help queries. Maps them to the corresponding ws command and returns output.
 
 ---
 

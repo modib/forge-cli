@@ -17,11 +17,36 @@ def detect_hardware():
     profile["memory"] = _detect_memory()
     profile["gpu"] = _detect_gpu()
     profile["disk"] = _detect_disk()
+    profile["apple_silicon"] = _is_apple_silicon()
+    profile["mlx_available"] = _check_mlx_available()
+    profile["recommended_backend"] = _recommend_backend(profile)
     return profile
+
+
+def _is_apple_silicon():
+    return platform.system() == "Darwin" and platform.machine() == "arm64"
+
+
+def _check_mlx_available():
+    try:
+        import mlx  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 def _detect_cpu():
     info = {"cores": os.cpu_count() or 0}
+    if _is_apple_silicon():
+        try:
+            out = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=5)
+            if out.returncode == 0 and out.stdout.strip():
+                info["model"] = out.stdout.strip()
+                return info
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        info["model"] = "Apple Silicon"
+        return info
     try:
         with open("/proc/cpuinfo") as f:
             for line in f:
@@ -40,6 +65,15 @@ def _detect_cpu():
 
 def _detect_memory():
     info = {}
+    if _is_apple_silicon():
+        try:
+            out = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=5)
+            if out.returncode == 0 and out.stdout.strip():
+                total_bytes = int(out.stdout.strip())
+                info["total_gb"] = round(total_bytes / (1024**3), 1)
+                return info
+        except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
+            pass
     try:
         with open("/proc/meminfo") as f:
             for line in f:
@@ -56,6 +90,22 @@ def _detect_memory():
 
 def _detect_gpu():
     gpus = []
+    if _is_apple_silicon():
+        try:
+            out = subprocess.run(["system_profiler", "SPDisplaysDataType"], capture_output=True, text=True, timeout=10)
+            if out.returncode == 0:
+                for line in out.stdout.split("\n"):
+                    stripped = line.strip()
+                    if stripped.startswith("Chipset Model:"):
+                        gpus.append({"vendor": "apple", "model": stripped.split(":", 1)[1].strip()})
+                    elif stripped.startswith("VRAM ("):
+                        gpus.append({"vendor": "apple", "memory": stripped.split(":", 1)[1].strip()})
+                if gpus:
+                    return gpus
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        gpus.append({"vendor": "apple", "model": "Apple Silicon (unified)"})
+        return gpus
     try:
         out = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"], capture_output=True, text=True, timeout=10)
         if out.returncode == 0:
@@ -95,12 +145,23 @@ def _detect_disk():
     return info
 
 
-def suggest_model(profile):
+def _recommend_backend(profile):
+    if profile.get("apple_silicon") and profile.get("memory", {}).get("total_gb", 0) >= 8:
+        return "mlx"
+    return "ollama"
+
+
+def suggest_model(profile, backend=None):
     mem = profile.get("memory", {}).get("total_gb", 0)
-    gpu = profile.get("gpu", [])
-    has_nvidia = any(g.get("vendor") == "nvidia" for g in gpu)
-    if has_nvidia:
-        return "qwen2.5-coder:1.5b"
+    apple_silicon = profile.get("apple_silicon", False)
+    if backend is None:
+        backend = _recommend_backend(profile)
+    if apple_silicon and backend == "mlx":
+        if mem >= 16:
+            return "Qwen2.5-Coder-7B-Instruct"
+        if mem >= 8:
+            return "Qwen2.5-Coder-7B-Instruct"
+        return "Qwen2.5-Coder-1.5B-Instruct"
     if mem >= 16:
         return "qwen2.5-coder:7b"
     if mem >= 8:
@@ -117,6 +178,7 @@ def detect_and_print(args):
     if args.json:
         print(json.dumps(profile, indent=2))
         return
+    backend = args.backend if args.backend else profile["recommended_backend"]
     print("\033[36mHardware Profile\033[0m")
     print(f"  Platform:  {profile['platform']} ({profile['arch']})")
     cpu = profile.get("cpu", {})
@@ -128,7 +190,15 @@ def detect_and_print(args):
     disk = profile.get("disk", {})
     if disk:
         print(f"  Disk:      {disk.get('total_gb', '?')} GB total, {disk.get('free_gb', '?')} GB free ({disk.get('used_pct', '?')}% used)")
-    print(f"\n\033[36mSuggested model:\033[0m {suggest_model(profile)}")
+    apple = profile.get("apple_silicon", False)
+    mlx = profile.get("mlx_available", False)
+    if apple:
+        check_mark = "\033[32m✓\033[0m"
+        print(f"  Apple Silicon: {check_mark}")
+        mlx_status = check_mark if mlx else "\033[33mnot installed\033[0m"
+        print(f"  MLX:          {mlx_status}")
+    print(f"  Recommended backend: \033[36m{profile['recommended_backend']}\033[0m")
+    print(f"\n\033[36mSuggested model\033[0m (--backend {backend}): {suggest_model(profile, backend)}")
 
 
 def ai_config_cmd(args):
@@ -173,17 +243,24 @@ def _coerce_value(val):
         return val
 
 
-def setup_ollama(model=None):
+def setup(backend=None, model=None):
+    profile = detect_hardware()
+    if backend is None:
+        backend = profile["recommended_backend"]
+    if backend == "mlx":
+        return setup_mlx(model=model, profile=profile)
+    return setup_ollama(model=model, profile=profile)
+
+
+def setup_ollama(model=None, profile=None):
+    if profile is None:
+        profile = detect_hardware()
     log = []
     has_ollama = check_ollama()
-    result = {"ollama_installed": has_ollama}
+    result = {"backend": "ollama", "ollama_installed": has_ollama}
     if not has_ollama:
         log.append("Ollama not found. Attempting install...")
         try:
-            subprocess.run(
-                ["curl", "-fsSL", "https://ollama.com/install.sh"],
-                capture_output=True, text=True, timeout=30,
-            )
             install_sh = subprocess.run(
                 ["curl", "-fsSL", "https://ollama.com/install.sh"],
                 capture_output=True, text=True, timeout=30,
@@ -203,16 +280,56 @@ def setup_ollama(model=None):
             return {"error": f"Ollama install failed: {e}"}
     else:
         log.append("Ollama already installed")
-
     if not model:
-        model = suggest_model(detect_hardware())
+        model = suggest_model(profile, backend="ollama")
     log.append(f"Pulling model: {model}")
-    result["model_pulled"] = model
+    result["model"] = model
     result["log"] = log
     return result
 
 
-def benchmark_model(model=None, prompt="Hello"):
+def setup_mlx(model=None, profile=None):
+    if profile is None:
+        profile = detect_hardware()
+    log = []
+    result = {"backend": "mlx"}
+    if not profile.get("apple_silicon"):
+        return {"error": "MLX requires Apple Silicon (M1-M4). Use --backend ollama instead."}
+    has_mlx = _check_mlx_available()
+    if not has_mlx:
+        log.append("Installing MLX...")
+        try:
+            out = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "mlx", "mlx-lm"],
+                capture_output=True, text=True, timeout=120,
+            )
+            if out.returncode != 0:
+                return {"error": f"MLX install failed: {out.stderr.strip()}"}
+            has_mlx = True
+            log.append("MLX installed successfully")
+        except subprocess.TimeoutExpired as e:
+            return {"error": f"MLX install timed out: {e}"}
+    else:
+        log.append("MLX already installed")
+    if not model:
+        model = suggest_model(profile, backend="mlx")
+    log.append(f"Suggested model: {model}")
+    result["model"] = model
+    result["mlx_installed"] = has_mlx
+    result["log"] = log
+    return result
+
+
+def benchmark_model(model=None, prompt="Hello", backend=None):
+    profile = detect_hardware()
+    if backend is None:
+        backend = profile["recommended_backend"]
+    if backend == "mlx":
+        return _benchmark_mlx(model=model, prompt=prompt)
+    return _benchmark_ollama(model=model, prompt=prompt)
+
+
+def _benchmark_ollama(model=None, prompt="Hello"):
     if not check_ollama():
         return {"error": "Ollama not installed. Run 'ws ai setup' first."}
     if not model:
@@ -231,6 +348,7 @@ def benchmark_model(model=None, prompt="Hello"):
         latency_ms = round(elapsed * 1000)
         tokens_per_sec = round(len(response.split()) / elapsed, 1) if elapsed > 0 else 0
         return {
+            "backend": "ollama",
             "model": model,
             "prompt": prompt,
             "response": response[:500],
@@ -240,6 +358,35 @@ def benchmark_model(model=None, prompt="Hello"):
         }
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         return {"error": f"Benchmark failed: {e}"}
+
+
+def _benchmark_mlx(model=None, prompt="Hello"):
+    if not _check_mlx_available():
+        return {"error": "MLX not installed. Run 'ws ai setup --backend mlx' first."}
+    if not model:
+        model = "Qwen2.5-Coder-1.5B-Instruct"
+    if not _is_apple_silicon():
+        return {"error": "MLX requires Apple Silicon hardware"}
+    try:
+        from mlx_lm import load, generate
+        import time
+        start = time.time()
+        model_obj, tokenizer = load(f"mlx-community/{model}")
+        response = generate(model_obj, tokenizer, prompt=prompt, max_tokens=128, verbose=False)
+        elapsed = time.time() - start
+        latency_ms = round(elapsed * 1000)
+        tokens_per_sec = round(len(response.split()) / elapsed, 1) if elapsed > 0 else 0
+        return {
+            "backend": "mlx",
+            "model": model,
+            "prompt": prompt,
+            "response": response[:500],
+            "response_length": len(response),
+            "latency_ms": latency_ms,
+            "tokens_per_sec": tokens_per_sec,
+        }
+    except Exception as e:
+        return {"error": f"MLX benchmark failed: {e}"}
 
 
 _INTENT_MAP = {

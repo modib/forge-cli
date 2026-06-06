@@ -29,7 +29,7 @@ ws is organized as three layers:
 | `config.py` | Load/save `~/.workspace/config.json`, repo lookup |
 | `engine.py` | Workspace scanning, status aggregation, health checks |
 | `git.py` | Git subprocess wrapper (discover, status, clone) |
-| `server.py` | MCP protocol server (13 tools over stdio) |
+| `server.py` | MCP protocol server (23 tools over stdio) |
 
 ## State Flow
 
@@ -52,7 +52,7 @@ ws status
 ws serve
   → server.py: MCP Server("ws")
   → stdio_server() → await JSON-RPC messages
-  → list_tools() → return 13 tool definitions
+  → list_tools() → return 23 tool definitions
   → call_tool(name, args) → dispatch to engine/config/git
   → return TextContent
 ```
@@ -65,7 +65,7 @@ Agent                    ws serve
   │── initialize ─────────→│
   │←────── result ────────│
   │── tools/list ─────────→│
-  │←── 13 tool defs ──────│
+  │←── 23 tool defs ──────│
   │── tools/call ─────────→│
   │   workspace_status     │──→ engine.get_overall_status()
   │←────── result ────────│←── JSON response

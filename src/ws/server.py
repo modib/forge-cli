@@ -235,6 +235,37 @@ async def list_tools() -> list[Tool]:
                 "required": ["query"],
             },
         ),
+        Tool(
+            name="ai_setup",
+            description="Set up AI backend (ollama or mlx) and pull model",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "backend": {
+                        "type": "string",
+                        "enum": ["ollama", "mlx"],
+                        "description": "AI backend (auto-detected if omitted)",
+                    },
+                    "model": {"type": "string", "description": "Model name (auto-suggested if omitted)"},
+                },
+            },
+        ),
+        Tool(
+            name="ai_benchmark",
+            description="Run inference benchmark on AI backend",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "model": {"type": "string", "description": "Model name"},
+                    "prompt": {"type": "string", "description": "Prompt text"},
+                    "backend": {
+                        "type": "string",
+                        "enum": ["ollama", "mlx"],
+                        "description": "AI backend (auto-detected if omitted)",
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -424,6 +455,21 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         elif name == "exec_nl":
             result = wsai.exec_nl(arguments["query"], dry_run=arguments.get("dry_run", False))
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "ai_setup":
+            result = wsai.setup(
+                backend=arguments.get("backend"),
+                model=arguments.get("model"),
+            )
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "ai_benchmark":
+            result = wsai.benchmark_model(
+                model=arguments.get("model"),
+                prompt=arguments.get("prompt", "Hello"),
+                backend=arguments.get("backend"),
+            )
             return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
         else:

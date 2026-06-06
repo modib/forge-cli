@@ -150,6 +150,43 @@ Get shared notes for a group.
 - **Args:** `group` (string, required)
 - **Returns:** `[{content, label, timestamp}]`
 
+### AI Tools
+
+#### `ai_detect`
+
+Detect hardware profile (CPU, RAM, GPU, disk, Apple Silicon, MLX).
+
+- **Args:** None
+- **Returns:** `{platform, arch, cpu, memory, gpu, disk, apple_silicon, mlx_available, recommended_backend}`
+
+#### `ai_config`
+
+View or modify AI configuration.
+
+- **Args:** `key` (string, optional), `value` (string, optional)
+- **Returns:** Current AI config as JSON
+
+#### `ai_setup`
+
+Set up AI backend and pull model.
+
+- **Args:** `backend` (`ollama`|`mlx`, optional), `model` (string, optional)
+- **Returns:** `{backend, model, log, ollama_installed?, mlx_installed?}`
+
+#### `ai_benchmark`
+
+Run inference benchmark.
+
+- **Args:** `model` (string, optional), `prompt` (string, optional), `backend` (`ollama`|`mlx`, optional)
+- **Returns:** `{backend, model, latency_ms, tokens_per_sec, response_length}`
+
+#### `exec_nl`
+
+Execute a natural language workspace command.
+
+- **Args:** `query` (string, required), `dry_run` (boolean, optional)
+- **Returns:** `{intent, command, output}`
+
 ## Testing the MCP Server
 
 ```bash
@@ -161,7 +198,7 @@ printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion
 ws uses the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. The server:
 
 1. Receives `initialize` request
-2. Responds with server capabilities (13 tools)
+2. Responds with server capabilities (23 tools)
 3. Handles `tools/list` and `tools/call` requests
 4. Returns results as `TextContent` in JSON-RPC responses
 

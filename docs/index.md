@@ -20,8 +20,8 @@ ws is the cross-project workspace CLI for [Forge](https://github.com/forge/forge
 - **Cross-project status**: One command shows all your repos — branch, dirty state, ahead/behind
 - **Feature management**: Create feature branches across multiple repos with git worktrees
 - **Shared context**: Notes and decisions that span projects, visible to all AI agents
-- **MCP server**: 13 tools over stdio — Claude Code, Codex, Gemini CLI, and any MCP agent can call them
-- **AI-ready**: `ws exec` (coming in v0.3) uses a local 3B model for natural language workspace commands
+- **MCP server**: 23 tools over stdio — Claude Code, Codex, Gemini CLI, and any MCP agent can call them
+- **AI-native**: `ws ai detect` probes hardware, `ws ai setup` installs Ollama or MLX, `ws exec` routes natural language to ws commands
 
 ## Install
 
@@ -48,7 +48,7 @@ ws status
 
 ## Project Status
 
-ws CLI is in active development (v0.2). See the [roadmap](../ROADMAP.md) for what's coming.
+ws CLI is in active development (v0.3). See the [roadmap](../ROADMAP.md) for what's coming.
 
 ---
 

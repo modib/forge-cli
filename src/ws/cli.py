@@ -660,21 +660,25 @@ def cmd_ai(args):
     elif action == "config":
         wsai.ai_config_cmd(args)
     elif action == "setup":
-        result = wsai.setup_ollama(model=args.model)
+        result = wsai.setup(backend=args.backend, model=args.model)
         if "error" in result:
             print(f"\033[31m{result['error']}\033[0m")
         else:
             for line in result.get("log", []):
                 print(line)
+            b = result.get("backend", "ollama")
             if result.get("ollama_installed"):
                 print("\033[32m✓\033[0m Ollama installed")
-            if result.get("model_pulled"):
-                print(f"\033[32m✓\033[0m Model pulled: {result['model_pulled']}")
+            if result.get("mlx_installed"):
+                print("\033[32m✓\033[0m MLX installed")
+            if result.get("model"):
+                print(f"\033[32m✓\033[0m {b} configured — suggested model: {result['model']}")
     elif action == "benchmark":
-        result = wsai.benchmark_model(model=args.model, prompt=args.prompt)
+        result = wsai.benchmark_model(model=args.model, prompt=args.prompt, backend=args.backend)
         if "error" in result:
             print(f"\033[31m{result['error']}\033[0m")
         else:
+            print(f"Backend: \033[36m{result.get('backend', '?')}\033[0m")
             print(f"Model: \033[36m{result['model']}\033[0m")
             print(f"Prompt: {result['prompt'][:80]}...")
             print(f"Response length: {result['response_length']} chars")
@@ -798,10 +802,11 @@ def main():
     p_completion = sub.add_parser("completion", help="Generate shell completion script")
     p_completion.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
 
-    p_ai = sub.add_parser("ai", help="AI integration commands")
+    p_ai = sub.add_parser("ai", help="AI integration commands (detect, setup, config, benchmark)")
     p_ai.add_argument("action", choices=["detect", "setup", "config", "benchmark"])
     p_ai.add_argument("--model", default="", help="Model name")
     p_ai.add_argument("--prompt", default="Hello", help="Benchmark prompt")
+    p_ai.add_argument("--backend", default="", choices=["", "ollama", "mlx"], help="AI backend (auto-detect if omitted)")
     p_ai.add_argument("--json", action="store_true", help="Output as JSON")
     p_ai.add_argument("key", nargs="?", help="Config key for set/unset")
     p_ai.add_argument("value", nargs="?", help="Config value for set")

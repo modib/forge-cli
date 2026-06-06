@@ -121,7 +121,7 @@ Disk: 28.8% used (150.7 GB free of 228.0 GB)
 ws serve
 ```
 
-Starts the MCP stdio server with 13 tools. See the [MCP documentation](./mcp.md) for agent setup.
+Starts the MCP stdio server with 23 tools. See the [MCP documentation](./mcp.md) for agent setup.
 
 ---
 

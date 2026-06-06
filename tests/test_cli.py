@@ -305,13 +305,13 @@ class TestCmdPr:
 
 class TestCmdAiDetect:
     def test_detect_json(self, ws_config, captured_print):
-        cmd_ai(_ns(action="detect", json=True, model="", prompt="", key=None, value=None))
+        cmd_ai(_ns(action="detect", json=True, model="", prompt="", backend="", key=None, value=None))
         output = " ".join(captured_print)
         assert "cpu" in output
         assert "memory" in output
 
     def test_detect_text(self, ws_config, captured_print):
-        cmd_ai(_ns(action="detect", json=False, model="", prompt="", key=None, value=None))
+        cmd_ai(_ns(action="detect", json=False, model="", prompt="", backend="", key=None, value=None))
         output = " ".join(captured_print)
         assert "Hardware Profile" in output
         assert "CPU" in output
