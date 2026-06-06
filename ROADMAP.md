@@ -6,7 +6,7 @@
 
 - [x] `ws init` — workspace config + GitHub auth
 - [x] `ws scan` — discover git repos in ~/Workspace
-- [x] `ws status [--json]` — cross-project status (branch, dirty, ahead/behind)
+- [x] `ws status [--json]` — cross-project status (branch, dirty, ahead/behind, remote state)
 - [x] `ws health` — dev environment check (brew, ollama, gh, disk)
 - [x] `ws clone` — clone + auto-register repos
 - [x] `ws serve` — MCP stdio server with 13 tools
@@ -14,8 +14,10 @@
 - [x] `ws feature create/list/worktree` — feature lifecycle with git worktrees
 - [x] State model: `~/.workspace/config.json`
 - [x] Session artifacts: `~/.workspace/sessions/<id>/`
+- [x] Homebrew tap: `brew install modib/forge/ws-cli`
+- [x] CI/CD (pytest — 86 tests, CI gate before release)
 - [ ] GitHub Pages docs site
-- [ ] CI/CD (pytest, lint, typecheck)
+- [ ] Lint + typecheck (ruff, mypy)
 
 ## v0.2 — Production Workflows
 
@@ -69,6 +71,6 @@
 
 - [ ] Stable MCP API (semver)
 - [ ] Plugin system for third-party tools
-- [ ] Comprehensive test suite
+- [ ] Comprehensive integration tests
 - [ ] Full docs site
-- [ ] Package distribution (PyPI, Homebrew, AUR)
+- [ ] Package distribution (PyPI, AUR)
