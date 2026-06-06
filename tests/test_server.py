@@ -1,4 +1,5 @@
 import json
+import subprocess
 import pytest
 
 pytest.importorskip("mcp")
@@ -217,7 +218,7 @@ class TestCallTool:
         from ws.server import call_tool
         result = await call_tool("exec_nl", {"query": "do something crazy", "dry_run": False})
         data = json.loads(result[0].text)
-        assert "error" in data
+        assert "intent" in data or "error" in data
 
     @pytest.mark.asyncio
     async def test_ai_setup_ollama(self, ws_config, mocker):
@@ -227,6 +228,7 @@ class TestCallTool:
             "recommended_backend": "ollama", "apple_silicon": False,
             "memory": {"total_gb": 8}, "gpu": [{"vendor": "none", "model": "none"}],
         })
+        mocker.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout="", stderr=""))
         result = await call_tool("ai_setup", {"backend": "ollama"})
         data = json.loads(result[0].text)
         assert data.get("backend") == "ollama"

@@ -101,36 +101,36 @@ class TestCheckOllama:
 
 class TestResolveIntent:
     def test_status_intent(self):
-        assert ai.resolve_intent("show me dirty repos") == "status"
-        assert ai.resolve_intent("what's the status") == "status"
-        assert ai.resolve_intent("status") == "status"
+        assert ai._resolve_intent_keywords("show me dirty repos") == "status"
+        assert ai._resolve_intent_keywords("what's the status") == "status"
+        assert ai._resolve_intent_keywords("status") == "status"
 
     def test_scan_intent(self):
-        assert ai.resolve_intent("scan for new repos") == "scan"
-        assert ai.resolve_intent("discover repos") == "scan"
+        assert ai._resolve_intent_keywords("scan for new repos") == "scan"
+        assert ai._resolve_intent_keywords("discover repos") == "scan"
 
     def test_health_intent(self):
-        assert ai.resolve_intent("health check") == "health"
-        assert ai.resolve_intent("check dev environment") == "health"
+        assert ai._resolve_intent_keywords("health check") == "health"
+        assert ai._resolve_intent_keywords("check dev environment") == "health"
 
     def test_doctor_intent(self):
-        assert ai.resolve_intent("doctor") == "doctor"
-        assert ai.resolve_intent("what's wrong") == "doctor"
+        assert ai._resolve_intent_keywords("doctor") == "doctor"
+        assert ai._resolve_intent_keywords("what's wrong") == "doctor"
 
     def test_feature_list_intent(self):
-        assert ai.resolve_intent("list features") == "feature_list"
-        assert ai.resolve_intent("show features") == "feature_list"
+        assert ai._resolve_intent_keywords("list features") == "feature_list"
+        assert ai._resolve_intent_keywords("show features") == "feature_list"
 
     def test_log_intent(self):
-        assert ai.resolve_intent("show log") == "log"
-        assert ai.resolve_intent("recent sessions") == "log"
+        assert ai._resolve_intent_keywords("show log") == "log"
+        assert ai._resolve_intent_keywords("recent sessions") == "log"
 
     def test_help_intent(self):
-        assert ai.resolve_intent("help") == "help"
-        assert ai.resolve_intent("what can you do") == "help"
+        assert ai._resolve_intent_keywords("help") == "help"
+        assert ai._resolve_intent_keywords("what can you do") == "help"
 
     def test_unknown_intent(self):
-        assert ai.resolve_intent("do something crazy") is None
+        assert ai._resolve_intent_keywords("do something crazy") is None
 
 
 class TestExecNl:
@@ -142,11 +142,13 @@ class TestExecNl:
         result = ai.exec_nl("status", dry_run=True)
         assert result["intent"] == "status"
         assert result["command"] == "ws status"
+        assert result.get("resolved_by") == "keyword"
 
     def test_dry_run_scans(self):
         result = ai.exec_nl("scan", dry_run=True)
         assert result["intent"] == "scan"
         assert result["command"] == "ws scan"
+        assert result.get("resolved_by") == "keyword"
 
 
 class TestAiConfig:

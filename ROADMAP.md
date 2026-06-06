@@ -39,7 +39,7 @@
 
 - [x] `ws ai detect` — hardware probe (CPU, RAM, GPU, disk, Apple Silicon, MLX)
 - [x] `ws ai setup` — auto-install Ollama or MLX, suggest model
-- [x] `ws exec "show dirty repos"` — NL router with LLM fallback (Ollama/MLX) when keyword matching fails
+- [x] `ws exec "show dirty repos"` — NL router: keyword → GitHub Models free tier → local model (Ollama/MLX) with auto-pull on demand
 - [x] `ws exec --use-llm` — force LLM-based intent resolution for all queries
 - [x] `ws ai status` — check whether model backend is ready for inference
 - [x] `ws ai config` — view/edit AI routing config

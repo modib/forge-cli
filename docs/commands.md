@@ -234,22 +234,24 @@ Reports: model, prompt snippet, response length, latency (ms), tokens/sec.
 
 ### `ws exec`
 
-Execute a natural language workspace command. Uses keyword matching first, then falls back to the local AI model (Ollama/MLX) for unrecognized queries.
+Execute a natural language workspace command. No flags needed — it just works.
 
 ```bash
-ws exec "show me dirty repos"                 # Keyword match → ws status
-ws exec "scan for new repos" --dry-run        # Preview intent + resolution method
-ws exec "what branches are ahead of main"     # Keyword fail → LLM fallback
-ws exec "what branches are ahead" --use-llm   # Force LLM resolution
-ws exec "find all dirty repos" --use-llm --backend ollama  # Specify backend
+ws exec "show me dirty repos"           # Keyword match → ws status
+ws exec "scan for new repos"            # Keyword match → ws scan
+ws exec "find vulnerable libraries"     # Keyword fail → GitHub Models → local model
 ```
 
-**Resolution priority:**
-1. Hardcoded keyword patterns (fast, no model needed)
-2. LLM fallback via Ollama or MLX (when keyword fails and model is available)
-3. `--use-llm` flag forces LLM for all queries (bypasses keyword matching)
+**Resolution chain** (automatic, transparent):
+1. **Keyword patterns** — instant match for common queries (no model needed)
+2. **GitHub Models free tier** — if `gh` is authenticated, tries cloud API (fast, no setup)
+3. **Local model** — Ollama or MLX (auto-pulled on first use), shows progress:
+   ```
+   ws: downloading qwen2.5-coder:1.5b (this may take a minute)...
+   ws: model ready
+   ```
 
-Understands: status, scan, health, doctor, feature list, log, and help intents. Maps them to the corresponding ws command and returns output.
+Each step shows a brief note on stderr: `ws: resolved by GitHub Models` or `ws: resolved by local model (ollama)`. If no resolver succeeds, you'll get a helpful message with an example.
 
 ---
 

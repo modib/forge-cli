@@ -225,18 +225,12 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="exec_nl",
-            description="Execute a natural language workspace command (keyword + LLM fallback)",
+            description="Execute a natural language workspace command (keyword → GitHub Models → local model)",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Natural language query"},
                     "dry_run": {"type": "boolean", "description": "Show intent without executing"},
-                    "use_llm": {"type": "boolean", "description": "Force LLM-based intent resolution"},
-                    "backend": {
-                        "type": "string",
-                        "enum": ["ollama", "mlx"],
-                        "description": "AI backend for LLM resolution",
-                    },
                 },
                 "required": ["query"],
             },
@@ -485,8 +479,6 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             result = wsai.exec_nl(
                 arguments["query"],
                 dry_run=arguments.get("dry_run", False),
-                use_llm=arguments.get("use_llm", False),
-                backend=arguments.get("backend"),
             )
             return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 

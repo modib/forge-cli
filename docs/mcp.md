@@ -189,10 +189,10 @@ Run inference benchmark.
 
 #### `exec_nl`
 
-Execute a natural language workspace command (keyword + LLM fallback).
+Execute a natural language workspace command (keyword → GitHub Models → local model).
 
-- **Args:** `query` (string, required), `dry_run` (boolean, optional), `use_llm` (boolean, optional), `backend` (`ollama`|`mlx`, optional)
-- **Returns:** `{intent, command, output}`
+- **Args:** `query` (string, required), `dry_run` (boolean, optional)
+- **Returns:** `{intent, command, output, resolved_by}`
 
 ## Testing the MCP Server
 

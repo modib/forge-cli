@@ -178,7 +178,7 @@ def detect_and_print(args):
     if args.json:
         print(json.dumps(profile, indent=2))
         return
-    backend = args.backend if args.backend else profile["recommended_backend"]
+    backend = getattr(args, "backend", None) or profile["recommended_backend"]
     print("\033[36mHardware Profile\033[0m")
     print(f"  Platform:  {profile['platform']} ({profile['arch']})")
     cpu = profile.get("cpu", {})
@@ -282,7 +282,14 @@ def setup_ollama(model=None, profile=None):
         log.append("Ollama already installed")
     if not model:
         model = suggest_model(profile, backend="ollama")
-    log.append(f"Pulling model: {model}")
+    log.append(f"Pulling model: {model}...")
+    try:
+        pull = subprocess.run(["ollama", "pull", model], capture_output=True, text=True, timeout=300)
+        if pull.returncode != 0:
+            return {"error": f"Failed to pull model {model}: {pull.stderr.strip()}"}
+        log.append(f"Model {model} downloaded")
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        return {"error": f"Model pull timed out: {e}"}
     result["model"] = model
     result["log"] = log
     return result
@@ -442,7 +449,66 @@ def check_model_ready(backend=None, model=None):
         out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
         if out.returncode == 0 and model in out.stdout:
             return {"ready": True, "backend": "ollama", "model": model}
-    return {"ready": True, "backend": "ollama", "model": model or suggest_model(profile, "ollama"), "note": "Model not pulled yet; first inference will pull it"}
+    return {"ready": True, "backend": "ollama", "model": model or suggest_model(profile, "ollama"), "note": "Model not pulled yet — will download on first use"}
+
+
+def _get_github_token():
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        return token
+    try:
+        out = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=5)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def _resolve_with_github_models(query):
+    token = _get_github_token()
+    if not token:
+        return None
+    prompt = _EXEC_PROMPT.format(query=query)
+    import urllib.request
+    req = urllib.request.Request(
+        "https://models.inference.ai.azure.com/chat/completions",
+        data=json.dumps({
+            "model": "Phi-4-mini-instruct",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 50,
+        }).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+            content = data["choices"][0]["message"]["content"]
+            for line in content.split("\n"):
+                line = line.strip()
+                if line.startswith("{") and line.endswith("}"):
+                    intent = json.loads(line).get("intent", "unknown")
+                    if intent in _INTENT_COMMANDS:
+                        return intent
+    except Exception:
+        pass
+    return None
+
+
+def _ensure_ollama_model(model, timeout=300):
+    out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
+    if out.returncode == 0 and model in out.stdout:
+        return True
+    print(f"\033[90mws: downloading {model} (this may take a minute)...\033[0m", file=sys.stderr)
+    pull = subprocess.run(["ollama", "pull", model], capture_output=True, text=True, timeout=timeout)
+    if pull.returncode != 0:
+        print(f"\033[90mws: download failed: {pull.stderr.strip()}\033[0m", file=sys.stderr)
+        return False
+    print(f"\033[90mws: {model} ready\033[0m", file=sys.stderr)
+    return True
 
 
 def _resolve_with_ollama(query, model=None):
@@ -451,11 +517,13 @@ def _resolve_with_ollama(query, model=None):
     profile = detect_hardware()
     if not model:
         model = suggest_model(profile, "ollama")
+    if not _ensure_ollama_model(model):
+        return None
     prompt = _EXEC_PROMPT.format(query=query)
     try:
         out = subprocess.run(
             ["ollama", "run", model, prompt],
-            capture_output=True, text=True, timeout=60,
+            capture_output=True, text=True, timeout=300,
         )
         if out.returncode != 0:
             return None
@@ -484,6 +552,7 @@ def _resolve_with_mlx(query, model=None):
     prompt = _EXEC_PROMPT.format(query=query)
     try:
         from mlx_lm import load, generate
+        print(f"\033[90mws: loading {model}...\033[0m", file=sys.stderr)
         model_obj, tokenizer = load(f"mlx-community/{model}")
         response = generate(model_obj, tokenizer, prompt=prompt, max_tokens=128, verbose=False)
         for line in response.split("\n"):
@@ -501,46 +570,52 @@ def _resolve_with_mlx(query, model=None):
         return None
 
 
-def resolve_intent(query, use_llm=False, backend=None, model=None):
+def _resolve_intent_keywords(query):
     q = query.lower().strip()
     for intent, patterns in _INTENT_MAP.items():
         for p in patterns:
             if p in q:
                 return intent
-    if use_llm:
-        if backend is None:
-            backend = detect_hardware()["recommended_backend"]
-        if backend == "mlx":
-            return _resolve_with_mlx(query, model)
-        return _resolve_with_ollama(query, model)
     return None
 
 
-def exec_nl(query, dry_run=False, use_llm=False, backend=None, model=None):
-    if use_llm:
-        if backend is None:
-            backend = detect_hardware()["recommended_backend"]
-        ready = check_model_ready(backend=backend, model=model)
-        if not ready.get("ready"):
-            use_llm = False
-    if use_llm:
-        intent = resolve_intent(query, use_llm=True, backend=backend, model=model)
-    else:
-        intent = resolve_intent(query)
-        if not intent and backend:
-            ready = check_model_ready(backend=backend, model=model)
-            if ready.get("ready"):
-                intent = resolve_intent(query, use_llm=True, backend=backend, model=model)
-    if not intent:
-        return {"error": f"Could not understand query: {query!r}"}
+def _run_command(intent, dry_run=False, resolved_by=""):
     command = _INTENT_COMMANDS[intent]
     if dry_run:
-        return {"intent": intent, "command": command}
+        return {"intent": intent, "command": command, "resolved_by": resolved_by or "keyword"}
     try:
         out = subprocess.run(command.split(), capture_output=True, text=True, timeout=30)
         output = out.stdout.strip()
         if out.returncode != 0:
             output = out.stderr.strip() or output
-        return {"intent": intent, "command": command, "output": output}
+        return {"intent": intent, "command": command, "output": output, "resolved_by": resolved_by or "keyword"}
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         return {"error": f"Execution failed: {e}"}
+
+
+def exec_nl(query, dry_run=False):
+    intent = _resolve_intent_keywords(query)
+    if intent:
+        return _run_command(intent, dry_run, resolved_by="keyword")
+
+    intent = _resolve_with_github_models(query)
+    if intent:
+        return _run_command(intent, dry_run, resolved_by="GitHub Models")
+
+    profile = detect_hardware()
+    backend = profile["recommended_backend"]
+    ready = check_model_ready(backend=backend)
+    if not ready.get("ready"):
+        hint = ready.get("error", "no model backend available")
+        return {"error": f"I couldn't understand that query. Try something like 'show me dirty repos'. ({hint})"}
+    model = ready["model"]
+    note = ready.get("note", "")
+    if note:
+        print(f"\033[90mws: {note}\033[0m", file=sys.stderr)
+    if backend == "mlx":
+        intent = _resolve_with_mlx(query, model)
+    else:
+        intent = _resolve_with_ollama(query, model)
+    if intent:
+        return _run_command(intent, dry_run, resolved_by=f"local model ({backend})")
+    return {"error": "I couldn't understand that query. Try something like 'show me dirty repos' or 'ws status'."}

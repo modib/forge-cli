@@ -699,13 +699,15 @@ def cmd_ai(args):
 
 def cmd_exec(args):
     query = args.query
-    result = wsai.exec_nl(query, dry_run=args.dry_run, use_llm=args.use_llm, backend=args.backend)
+    result = wsai.exec_nl(query, dry_run=args.dry_run)
     if "error" in result:
         print(f"\033[31m{result['error']}\033[0m")
         return
+    resolved_by = result.get("resolved_by", "")
+    if resolved_by and resolved_by != "keyword":
+        print(f"\033[90mws: resolved by {resolved_by}\033[0m", file=sys.stderr)
     if args.dry_run:
-        resolved_by = "LLM" if args.use_llm else "keyword"
-        print(f"\033[36mIntent:\033[0m {result.get('intent', '?')} (\033[90mresolved by {resolved_by}\033[0m)")
+        print(f"\033[36mIntent:\033[0m {result.get('intent', '?')}")
         print(f"\033[36mCommand:\033[0m {result.get('command', '?')}")
         return
     print(f"\033[90m$ {result.get('command', '')}\033[0m")
@@ -826,8 +828,6 @@ def main():
     p_exec = sub.add_parser("exec", help="Execute natural language workspace command")
     p_exec.add_argument("query", help="Natural language query")
     p_exec.add_argument("--dry-run", action="store_true", help="Show intent without executing")
-    p_exec.add_argument("--use-llm", action="store_true", help="Force LLM-based intent resolution (fallback if keyword fails)")
-    p_exec.add_argument("--backend", default="", choices=["", "ollama", "mlx"], help="AI backend for LLM resolution")
 
     args = parser.parse_args()
 

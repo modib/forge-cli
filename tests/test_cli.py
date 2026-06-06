@@ -334,12 +334,12 @@ class TestCmdAiConfig:
 
 class TestCmdExec:
     def test_exec_unknown(self, captured_print):
-        cmd_exec(_ns(query="do something impossible", dry_run=False, use_llm=False, backend=""))
+        cmd_exec(_ns(query="do something impossible", dry_run=False))
         output = " ".join(captured_print)
-        assert "Could not understand" in output
+        assert "Could not understand" in output or "couldn't understand" in output
 
     def test_exec_dry_run(self, captured_print):
-        cmd_exec(_ns(query="status", dry_run=True, use_llm=False, backend=""))
+        cmd_exec(_ns(query="status", dry_run=True))
         output = " ".join(captured_print)
         assert "Intent:" in output
         assert "ws status" in output
