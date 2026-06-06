@@ -21,6 +21,15 @@ ws is the cross-project workspace CLI for [Forge](https://github.com/forge/forge
 
 ## Install
 
+**Recommended — Homebrew:**
+
+```bash
+brew tap modib/forge
+brew install ws-cli
+```
+
+**Alternative — pipx** (no Homebrew required):
+
 ```bash
 pipx install ws-cli
 ```

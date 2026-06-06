@@ -3,10 +3,16 @@
 **ws** is the Forge workspace CLI. It treats `~/Workspace` as a first-class entity: indexes git repos, tracks cross-project health, manages feature worktrees, shares context between projects, and exposes all operations as MCP tools for AI agents.
 
 ```bash
-pipx install ws-cli
+brew install modib/forge/ws-cli
 ws init
 ws scan
 ws status
+```
+
+Or via pipx (if you don't use Homebrew):
+
+```bash
+pipx install ws-cli
 ```
 
 ## Why ws?
@@ -21,8 +27,12 @@ AI coding agents (Claude Code, Codex, Cursor) are powerful, but they start blind
 ## Quick Start
 
 ```bash
-# Install
-pipx install ws-cli
+# Install (Homebrew — recommended for Forge OS)
+brew tap modib/forge
+brew install ws-cli
+
+# Or via pipx (works anywhere)
+# pipx install ws-cli
 
 # Initialize
 ws init --provider github

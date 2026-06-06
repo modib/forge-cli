@@ -2,13 +2,22 @@
 
 ## Prerequisites
 
+- [Homebrew](https://brew.sh) (recommended) or [pipx](https://pipx.pypa.io) for installation
 - Python 3.10+
 - git 2.20+
-- (optional) [Homebrew](https://brew.sh) for package management
 - (optional) [gh CLI](https://cli.github.com) for GitHub auth
 - (optional) [Ollama](https://ollama.ai) for local AI
 
 ## Install
+
+**Recommended — Homebrew:**
+
+```bash
+brew tap modib/forge
+brew install ws-cli
+```
+
+**Alternative — pipx** (works on any system, doesn't require Homebrew):
 
 ```bash
 pipx install ws-cli
