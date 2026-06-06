@@ -225,12 +225,18 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="exec_nl",
-            description="Execute a natural language workspace command",
+            description="Execute a natural language workspace command (keyword + LLM fallback)",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Natural language query"},
                     "dry_run": {"type": "boolean", "description": "Show intent without executing"},
+                    "use_llm": {"type": "boolean", "description": "Force LLM-based intent resolution"},
+                    "backend": {
+                        "type": "string",
+                        "enum": ["ollama", "mlx"],
+                        "description": "AI backend for LLM resolution",
+                    },
                 },
                 "required": ["query"],
             },
@@ -263,6 +269,21 @@ async def list_tools() -> list[Tool]:
                         "enum": ["ollama", "mlx"],
                         "description": "AI backend (auto-detected if omitted)",
                     },
+                },
+            },
+        ),
+        Tool(
+            name="ai_status",
+            description="Check whether AI model backend is ready for inference",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "backend": {
+                        "type": "string",
+                        "enum": ["ollama", "mlx"],
+                        "description": "AI backend (auto-detected if omitted)",
+                    },
+                    "model": {"type": "string", "description": "Model name to check"},
                 },
             },
         ),
@@ -453,12 +474,24 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 cfg.save_config(c)
             return [TextContent(type="text", text=json.dumps(ai, indent=2))]
 
-        elif name == "exec_nl":
-            result = wsai.exec_nl(arguments["query"], dry_run=arguments.get("dry_run", False))
-            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
-
         elif name == "ai_setup":
             result = wsai.setup(
+                backend=arguments.get("backend"),
+                model=arguments.get("model"),
+            )
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "exec_nl":
+            result = wsai.exec_nl(
+                arguments["query"],
+                dry_run=arguments.get("dry_run", False),
+                use_llm=arguments.get("use_llm", False),
+                backend=arguments.get("backend"),
+            )
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "ai_status":
+            result = wsai.check_model_ready(
                 backend=arguments.get("backend"),
                 model=arguments.get("model"),
             )

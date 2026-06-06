@@ -189,6 +189,20 @@ On Intel/Linux: installs Ollama, pulls a GGUF model. On Apple Silicon: installs 
 
 ---
 
+### `ws ai status`
+
+Check whether the AI model backend is ready for inference.
+
+```bash
+ws ai status                          # Auto-detect backend
+ws ai status --backend ollama         # Check Ollama readiness
+ws ai status --backend mlx            # Check MLX readiness (Apple Silicon only)
+```
+
+Returns: ✓ ready or ✗ not ready with guidance on next steps.
+
+---
+
 ### `ws ai config`
 
 View or modify AI routing configuration.
@@ -220,14 +234,22 @@ Reports: model, prompt snippet, response length, latency (ms), tokens/sec.
 
 ### `ws exec`
 
-Execute a natural language workspace command.
+Execute a natural language workspace command. Uses keyword matching first, then falls back to the local AI model (Ollama/MLX) for unrecognized queries.
 
 ```bash
-ws exec "show me dirty repos"           # Run ws status
-ws exec "scan for new repos" --dry-run  # Preview intent without executing
+ws exec "show me dirty repos"                 # Keyword match → ws status
+ws exec "scan for new repos" --dry-run        # Preview intent + resolution method
+ws exec "what branches are ahead of main"     # Keyword fail → LLM fallback
+ws exec "what branches are ahead" --use-llm   # Force LLM resolution
+ws exec "find all dirty repos" --use-llm --backend ollama  # Specify backend
 ```
 
-Understands: status, scan, health, doctor, feature list, log, and help queries. Maps them to the corresponding ws command and returns output.
+**Resolution priority:**
+1. Hardcoded keyword patterns (fast, no model needed)
+2. LLM fallback via Ollama or MLX (when keyword fails and model is available)
+3. `--use-llm` flag forces LLM for all queries (bypasses keyword matching)
+
+Understands: status, scan, health, doctor, feature list, log, and help intents. Maps them to the corresponding ws command and returns output.
 
 ---
 

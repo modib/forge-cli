@@ -399,16 +399,6 @@ _INTENT_MAP = {
     "help": ["help", "commands", "what can you do", "usage"],
 }
 
-
-def resolve_intent(query):
-    q = query.lower().strip()
-    for intent, patterns in _INTENT_MAP.items():
-        for p in patterns:
-            if p in q:
-                return intent
-    return None
-
-
 _INTENT_COMMANDS = {
     "status": "ws status",
     "scan": "ws scan",
@@ -419,9 +409,128 @@ _INTENT_COMMANDS = {
     "help": "ws --help",
 }
 
+_EXEC_PROMPT = """You are a workspace command router. Given a natural language query, determine which workspace command the user wants.
 
-def exec_nl(query, dry_run=False):
-    intent = resolve_intent(query)
+Available intents:
+- status: Check workspace/repo status (keywords: dirty, behind, ahead, state, what's going on)
+- scan: Discover new repos in workspace root
+- health: Check dev environment tools (brew, ollama, gh, python)
+- doctor: Diagnose workspace issues (missing repos, stale worktrees)
+- feature_list: List active feature branches
+- log: View agent session history
+- help: Show help and available commands
+
+Respond with ONLY a JSON object: {{"intent": "<intent_name>", "confidence": 0.95}}
+If the query does not match any intent, respond with: {{"intent": "unknown", "confidence": 0}}
+
+Query: {query}"""
+
+
+def check_model_ready(backend=None, model=None):
+    profile = detect_hardware()
+    if backend is None:
+        backend = profile["recommended_backend"]
+    if backend == "mlx":
+        if not profile.get("apple_silicon"):
+            return {"ready": False, "error": "MLX requires Apple Silicon"}
+        if not _check_mlx_available():
+            return {"ready": False, "error": "MLX not installed. Run 'ws ai setup --backend mlx'"}
+        return {"ready": True, "backend": "mlx", "model": model or suggest_model(profile, "mlx")}
+    if not check_ollama():
+        return {"ready": False, "error": "Ollama not installed. Run 'ws ai setup'"}
+    if model:
+        out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
+        if out.returncode == 0 and model in out.stdout:
+            return {"ready": True, "backend": "ollama", "model": model}
+    return {"ready": True, "backend": "ollama", "model": model or suggest_model(profile, "ollama"), "note": "Model not pulled yet; first inference will pull it"}
+
+
+def _resolve_with_ollama(query, model=None):
+    if not check_ollama():
+        return None
+    profile = detect_hardware()
+    if not model:
+        model = suggest_model(profile, "ollama")
+    prompt = _EXEC_PROMPT.format(query=query)
+    try:
+        out = subprocess.run(
+            ["ollama", "run", model, prompt],
+            capture_output=True, text=True, timeout=60,
+        )
+        if out.returncode != 0:
+            return None
+        response = out.stdout.strip()
+        for line in response.split("\n"):
+            line = line.strip()
+            if line.startswith("{") and line.endswith("}"):
+                try:
+                    data = json.loads(line)
+                    intent = data.get("intent", "unknown")
+                    if intent in _INTENT_COMMANDS:
+                        return intent
+                except (json.JSONDecodeError, KeyError):
+                    pass
+        return None
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+
+def _resolve_with_mlx(query, model=None):
+    if not _is_apple_silicon() or not _check_mlx_available():
+        return None
+    profile = detect_hardware()
+    if not model:
+        model = suggest_model(profile, "mlx")
+    prompt = _EXEC_PROMPT.format(query=query)
+    try:
+        from mlx_lm import load, generate
+        model_obj, tokenizer = load(f"mlx-community/{model}")
+        response = generate(model_obj, tokenizer, prompt=prompt, max_tokens=128, verbose=False)
+        for line in response.split("\n"):
+            line = line.strip()
+            if line.startswith("{") and line.endswith("}"):
+                try:
+                    data = json.loads(line)
+                    intent = data.get("intent", "unknown")
+                    if intent in _INTENT_COMMANDS:
+                        return intent
+                except (json.JSONDecodeError, KeyError):
+                    pass
+        return None
+    except Exception:
+        return None
+
+
+def resolve_intent(query, use_llm=False, backend=None, model=None):
+    q = query.lower().strip()
+    for intent, patterns in _INTENT_MAP.items():
+        for p in patterns:
+            if p in q:
+                return intent
+    if use_llm:
+        if backend is None:
+            backend = detect_hardware()["recommended_backend"]
+        if backend == "mlx":
+            return _resolve_with_mlx(query, model)
+        return _resolve_with_ollama(query, model)
+    return None
+
+
+def exec_nl(query, dry_run=False, use_llm=False, backend=None, model=None):
+    if use_llm:
+        if backend is None:
+            backend = detect_hardware()["recommended_backend"]
+        ready = check_model_ready(backend=backend, model=model)
+        if not ready.get("ready"):
+            use_llm = False
+    if use_llm:
+        intent = resolve_intent(query, use_llm=True, backend=backend, model=model)
+    else:
+        intent = resolve_intent(query)
+        if not intent and backend:
+            ready = check_model_ready(backend=backend, model=model)
+            if ready.get("ready"):
+                intent = resolve_intent(query, use_llm=True, backend=backend, model=model)
     if not intent:
         return {"error": f"Could not understand query: {query!r}"}
     command = _INTENT_COMMANDS[intent]

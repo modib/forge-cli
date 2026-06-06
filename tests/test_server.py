@@ -39,7 +39,8 @@ class TestListTools:
         assert "exec_nl" in names
         assert "ai_setup" in names
         assert "ai_benchmark" in names
-        assert len(names) == 23
+        assert "ai_status" in names
+        assert len(names) == 24
 
     def test_tool_has_schema(self):
         from ws.server import list_tools
@@ -219,8 +220,13 @@ class TestCallTool:
         assert "error" in data
 
     @pytest.mark.asyncio
-    async def test_ai_setup_ollama(self, ws_config):
+    async def test_ai_setup_ollama(self, ws_config, mocker):
         from ws.server import call_tool
+        mocker.patch("ws.ai.check_ollama", return_value=True)
+        mocker.patch("ws.ai.detect_hardware", return_value={
+            "recommended_backend": "ollama", "apple_silicon": False,
+            "memory": {"total_gb": 8}, "gpu": [{"vendor": "none", "model": "none"}],
+        })
         result = await call_tool("ai_setup", {"backend": "ollama"})
         data = json.loads(result[0].text)
         assert data.get("backend") == "ollama"
@@ -231,3 +237,10 @@ class TestCallTool:
         result = await call_tool("ai_benchmark", {})
         data = json.loads(result[0].text)
         assert "error" in data or "model" in data
+
+    @pytest.mark.asyncio
+    async def test_ai_status(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("ai_status", {"backend": "ollama"})
+        data = json.loads(result[0].text)
+        assert "ready" in data

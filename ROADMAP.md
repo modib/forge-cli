@@ -35,11 +35,13 @@
 
 ## v0.3 — AI Integration
 
-**Hardware-aware AI provisioning with dual backend (Ollama + MLX).**
+**Hardware-aware AI provisioning with dual backend (Ollama + MLX) and LLM-powered NL routing.**
 
 - [x] `ws ai detect` — hardware probe (CPU, RAM, GPU, disk, Apple Silicon, MLX)
 - [x] `ws ai setup` — auto-install Ollama or MLX, suggest model
-- [x] `ws exec "show dirty repos"` — NL router with intent mapping
+- [x] `ws exec "show dirty repos"` — NL router with LLM fallback (Ollama/MLX) when keyword matching fails
+- [x] `ws exec --use-llm` — force LLM-based intent resolution for all queries
+- [x] `ws ai status` — check whether model backend is ready for inference
 - [x] `ws ai config` — view/edit AI routing config
 - [x] `ws ai benchmark` — inference speed test (ollama + mlx backends)
 - [x] Apple Silicon detection + MLX backend support (M1–M4 unified memory)

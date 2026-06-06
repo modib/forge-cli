@@ -659,6 +659,17 @@ def cmd_ai(args):
         wsai.detect_and_print(args)
     elif action == "config":
         wsai.ai_config_cmd(args)
+    elif action == "status":
+        ready = wsai.check_model_ready(backend=args.backend)
+        if ready.get("ready"):
+            print("\033[32m✓\033[0m Model ready")
+            print(f"  Backend: \033[36m{ready['backend']}\033[0m")
+            print(f"  Model:   \033[36m{ready.get('model', '?')}\033[0m")
+            if ready.get("note"):
+                print(f"  Note:    {ready['note']}")
+        else:
+            print("\033[31m✗\033[0m Model not ready")
+            print(f"  {ready.get('error', 'Unknown issue')}")
     elif action == "setup":
         result = wsai.setup(backend=args.backend, model=args.model)
         if "error" in result:
@@ -688,12 +699,13 @@ def cmd_ai(args):
 
 def cmd_exec(args):
     query = args.query
-    result = wsai.exec_nl(query, dry_run=args.dry_run)
+    result = wsai.exec_nl(query, dry_run=args.dry_run, use_llm=args.use_llm, backend=args.backend)
     if "error" in result:
         print(f"\033[31m{result['error']}\033[0m")
         return
     if args.dry_run:
-        print(f"\033[36mIntent:\033[0m {result.get('intent', '?')}")
+        resolved_by = "LLM" if args.use_llm else "keyword"
+        print(f"\033[36mIntent:\033[0m {result.get('intent', '?')} (\033[90mresolved by {resolved_by}\033[0m)")
         print(f"\033[36mCommand:\033[0m {result.get('command', '?')}")
         return
     print(f"\033[90m$ {result.get('command', '')}\033[0m")
@@ -802,8 +814,8 @@ def main():
     p_completion = sub.add_parser("completion", help="Generate shell completion script")
     p_completion.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
 
-    p_ai = sub.add_parser("ai", help="AI integration commands (detect, setup, config, benchmark)")
-    p_ai.add_argument("action", choices=["detect", "setup", "config", "benchmark"])
+    p_ai = sub.add_parser("ai", help="AI integration commands (detect, status, setup, config, benchmark)")
+    p_ai.add_argument("action", choices=["detect", "status", "setup", "config", "benchmark"])
     p_ai.add_argument("--model", default="", help="Model name")
     p_ai.add_argument("--prompt", default="Hello", help="Benchmark prompt")
     p_ai.add_argument("--backend", default="", choices=["", "ollama", "mlx"], help="AI backend (auto-detect if omitted)")
@@ -814,6 +826,8 @@ def main():
     p_exec = sub.add_parser("exec", help="Execute natural language workspace command")
     p_exec.add_argument("query", help="Natural language query")
     p_exec.add_argument("--dry-run", action="store_true", help="Show intent without executing")
+    p_exec.add_argument("--use-llm", action="store_true", help="Force LLM-based intent resolution (fallback if keyword fails)")
+    p_exec.add_argument("--backend", default="", choices=["", "ollama", "mlx"], help="AI backend for LLM resolution")
 
     args = parser.parse_args()
 

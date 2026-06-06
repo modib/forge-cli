@@ -159,6 +159,13 @@ Detect hardware profile (CPU, RAM, GPU, disk, Apple Silicon, MLX).
 - **Args:** None
 - **Returns:** `{platform, arch, cpu, memory, gpu, disk, apple_silicon, mlx_available, recommended_backend}`
 
+#### `ai_status`
+
+Check whether AI model backend is ready for inference.
+
+- **Args:** `backend` (`ollama`|`mlx`, optional), `model` (string, optional)
+- **Returns:** `{ready: bool, backend, model, note?, error?}`
+
 #### `ai_config`
 
 View or modify AI configuration.
@@ -182,9 +189,9 @@ Run inference benchmark.
 
 #### `exec_nl`
 
-Execute a natural language workspace command.
+Execute a natural language workspace command (keyword + LLM fallback).
 
-- **Args:** `query` (string, required), `dry_run` (boolean, optional)
+- **Args:** `query` (string, required), `dry_run` (boolean, optional), `use_llm` (boolean, optional), `backend` (`ollama`|`mlx`, optional)
 - **Returns:** `{intent, command, output}`
 
 ## Testing the MCP Server
