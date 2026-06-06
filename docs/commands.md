@@ -185,7 +185,7 @@ ws ai setup --backend mlx             # Install MLX + mlx-lm (Apple Silicon only
 ws ai setup --model qwen2.5-coder:7b  # Specify model
 ```
 
-On Intel/Linux: installs Ollama, pulls a GGUF model. On Apple Silicon: installs `mlx` + `mlx-lm` via pip, suggests a safetensors model.
+On Intel/Linux: installs Ollama, pulls a Gemma model (e.g. `gemma2:2b` for 8GB RAM, `gemma3:7b` for 16GB+). On Apple Silicon: installs `mlx` + `mlx-lm` via pip, suggests a Qwen2.5-Coder model from mlx-community.
 
 ---
 
@@ -245,9 +245,9 @@ ws exec "find vulnerable libraries"     # Keyword fail → GitHub Models → loc
 **Resolution chain** (automatic, transparent):
 1. **Keyword patterns** — instant match for common queries (no model needed)
 2. **GitHub Models free tier** — if `gh` is authenticated, tries cloud API (fast, no setup)
-3. **Local model** — Ollama or MLX (auto-pulled on first use), shows progress:
+3. **Local model** — Ollama with Gemma (`gemma2:2b`), auto-pulled on first use, shows progress:
    ```
-   ws: downloading qwen2.5-coder:1.5b (this may take a minute)...
+   ws: downloading gemma2:2b (this may take a minute)...
    ws: model ready
    ```
 

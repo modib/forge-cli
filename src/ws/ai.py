@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -163,10 +164,10 @@ def suggest_model(profile, backend=None):
             return "Qwen2.5-Coder-7B-Instruct"
         return "Qwen2.5-Coder-1.5B-Instruct"
     if mem >= 16:
-        return "qwen2.5-coder:7b"
+        return "gemma3:7b"
     if mem >= 8:
-        return "phi-4-mini:3.8b"
-    return "qwen2.5-coder:1.5b"
+        return "gemma2:2b"
+    return "gemma2:2b"
 
 
 def check_ollama():
@@ -433,6 +434,19 @@ If the query does not match any intent, respond with: {{"intent": "unknown", "co
 Query: {query}"""
 
 
+def _parse_json_response(response):
+    match = re.search(r"\{[^}]*\}", response)
+    if match:
+        try:
+            data = json.loads(match.group())
+            intent = data.get("intent", "unknown")
+            if intent in _INTENT_COMMANDS:
+                return intent
+        except (json.JSONDecodeError, KeyError):
+            pass
+    return None
+
+
 def check_model_ready(backend=None, model=None):
     profile = detect_hardware()
     if backend is None:
@@ -445,11 +459,14 @@ def check_model_ready(backend=None, model=None):
         return {"ready": True, "backend": "mlx", "model": model or suggest_model(profile, "mlx")}
     if not check_ollama():
         return {"ready": False, "error": "Ollama not installed. Run 'ws ai setup'"}
-    if model:
+    suggested = model or suggest_model(profile, "ollama")
+    try:
         out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
-        if out.returncode == 0 and model in out.stdout:
-            return {"ready": True, "backend": "ollama", "model": model}
-    return {"ready": True, "backend": "ollama", "model": model or suggest_model(profile, "ollama"), "note": "Model not pulled yet — will download on first use"}
+        if out.returncode == 0 and suggested in out.stdout:
+            return {"ready": True, "backend": "ollama", "model": suggested}
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return {"ready": True, "backend": "ollama", "model": suggested, "note": "Model not pulled yet — will download on first use"}
 
 
 def _get_github_token():
@@ -487,14 +504,11 @@ def _resolve_with_github_models(query):
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read())
             content = data["choices"][0]["message"]["content"]
-            for line in content.split("\n"):
-                line = line.strip()
-                if line.startswith("{") and line.endswith("}"):
-                    intent = json.loads(line).get("intent", "unknown")
-                    if intent in _INTENT_COMMANDS:
-                        return intent
-    except Exception:
-        pass
+            result = _parse_json_response(content)
+            if result:
+                return result
+    except Exception as e:
+        print(f"\033[90mws: GitHub Models API error: {e}\033[0m", file=sys.stderr)
     return None
 
 
@@ -527,18 +541,7 @@ def _resolve_with_ollama(query, model=None):
         )
         if out.returncode != 0:
             return None
-        response = out.stdout.strip()
-        for line in response.split("\n"):
-            line = line.strip()
-            if line.startswith("{") and line.endswith("}"):
-                try:
-                    data = json.loads(line)
-                    intent = data.get("intent", "unknown")
-                    if intent in _INTENT_COMMANDS:
-                        return intent
-                except (json.JSONDecodeError, KeyError):
-                    pass
-        return None
+        return _parse_json_response(out.stdout)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return None
 
@@ -555,17 +558,7 @@ def _resolve_with_mlx(query, model=None):
         print(f"\033[90mws: loading {model}...\033[0m", file=sys.stderr)
         model_obj, tokenizer = load(f"mlx-community/{model}")
         response = generate(model_obj, tokenizer, prompt=prompt, max_tokens=128, verbose=False)
-        for line in response.split("\n"):
-            line = line.strip()
-            if line.startswith("{") and line.endswith("}"):
-                try:
-                    data = json.loads(line)
-                    intent = data.get("intent", "unknown")
-                    if intent in _INTENT_COMMANDS:
-                        return intent
-                except (json.JSONDecodeError, KeyError):
-                    pass
-        return None
+        return _parse_json_response(response)
     except Exception:
         return None
 

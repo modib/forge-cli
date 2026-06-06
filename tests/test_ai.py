@@ -55,17 +55,17 @@ class TestSuggestModel:
     def test_suggests_large_model_for_16gb(self):
         profile = {"memory": {"total_gb": 16}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
-        assert model == "qwen2.5-coder:7b"
+        assert model == "gemma3:7b"
 
     def test_suggests_medium_model_for_8gb(self):
         profile = {"memory": {"total_gb": 8}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
-        assert model == "phi-4-mini:3.8b"
+        assert model == "gemma2:2b"
 
     def test_suggests_small_model_for_low_ram(self):
         profile = {"memory": {"total_gb": 4}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
-        assert model == "qwen2.5-coder:1.5b"
+        assert model == "gemma2:2b"
 
     def test_suggests_apple_silicon_mlx_large(self):
         profile = {"memory": {"total_gb": 16}, "apple_silicon": True}
@@ -91,6 +91,29 @@ class TestSuggestModel:
         profile = {"memory": {"total_gb": 8}, "apple_silicon": False}
         backend = ai._recommend_backend(profile)
         assert backend == "ollama"
+
+
+class TestParseJsonResponse:
+    def test_parse_plain_json(self):
+        assert ai._parse_json_response('{"intent": "status", "confidence": 0.95}') == "status"
+
+    def test_parse_json_with_markdown_codeblock(self):
+        response = "Here is the result:\n```json\n{\"intent\": \"scan\"}\n```\n"
+        assert ai._parse_json_response(response) == "scan"
+
+    def test_parse_json_with_prefix_text(self):
+        response = "The answer is {\"intent\": \"health\", \"confidence\": 0.9}"
+        assert ai._parse_json_response(response) == "health"
+
+    def test_parse_json_with_wrapping_text(self):
+        response = "I think the intent is {\"intent\": \"doctor\"} based on the query."
+        assert ai._parse_json_response(response) == "doctor"
+
+    def test_parse_returns_none_for_no_json(self):
+        assert ai._parse_json_response("I have no idea what you want") is None
+
+    def test_parse_returns_none_for_invalid_json(self):
+        assert ai._parse_json_response("{invalid json here}") is None
 
 
 class TestCheckOllama:

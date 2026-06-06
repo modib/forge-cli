@@ -35,7 +35,7 @@
 
 ## v0.3 — AI Integration
 
-**Hardware-aware AI provisioning with dual backend (Ollama + MLX) and LLM-powered NL routing.**
+**Hardware-aware AI provisioning with Gemma (Ollama) + Qwen (MLX) and LLM-powered NL routing.**
 
 - [x] `ws ai detect` — hardware probe (CPU, RAM, GPU, disk, Apple Silicon, MLX)
 - [x] `ws ai setup` — auto-install Ollama or MLX, suggest model
@@ -45,7 +45,7 @@
 - [x] `ws ai config` — view/edit AI routing config
 - [x] `ws ai benchmark` — inference speed test (ollama + mlx backends)
 - [x] Apple Silicon detection + MLX backend support (M1–M4 unified memory)
-- [x] Dual model suggestion: Ollama (GGUF) on Intel/Linux, MLX (safetensors) on Apple Silicon
+- [x] Dual model suggestion: Ollama (Gemma 2B/7B GGUF) on Intel/Linux, MLX (Qwen2.5-Coder safetensors) on Apple Silicon
 - [ ] Model routing: local ↔ BYO key ↔ GitHub Models free tier
 - [ ] Session packing: `ws session summarize <id>` → compact context
 
