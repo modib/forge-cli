@@ -1,0 +1,14 @@
+pyproject.toml
+src/ws/__init__.py
+src/ws/__main__.py
+src/ws/cli.py
+src/ws/config.py
+src/ws/engine.py
+src/ws/git.py
+src/ws/server.py
+src/ws_cli.egg-info/PKG-INFO
+src/ws_cli.egg-info/SOURCES.txt
+src/ws_cli.egg-info/dependency_links.txt
+src/ws_cli.egg-info/entry_points.txt
+src/ws_cli.egg-info/requires.txt
+src/ws_cli.egg-info/top_level.txt
