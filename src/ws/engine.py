@@ -106,6 +106,40 @@ def _get_gh_user():
         return ""
 
 
+def diagnose():
+    c = cfg.load_config()
+    issues = []
+    for r in c.get("repos", []):
+        if not os.path.exists(r["path"]):
+            issues.append({"type": "missing_repo", "severity": "error", "repo": r["name"], "detail": f"Path not found: {r['path']}"})
+            continue
+        if not git.is_git_repo(r["path"]):
+            issues.append({"type": "not_git", "severity": "error", "repo": r["name"], "detail": "Not a git repository"})
+            continue
+        s = git.get_status(r["path"])
+        if not s.get("has_remote"):
+            issues.append({"type": "no_remote", "severity": "warning", "repo": r["name"], "detail": "No git remote configured"})
+        elif not s.get("has_upstream"):
+            issues.append({"type": "no_upstream", "severity": "info", "repo": r["name"], "detail": f"Branch '{s['branch']}' has no upstream tracking"})
+
+    for f in c.get("features", []):
+        for repo_name, wt_path in f.get("worktrees", {}).items():
+            if not os.path.exists(wt_path):
+                issues.append({"type": "stale_worktree", "severity": "warning", "feature": f["name"], "repo": repo_name, "detail": f"Worktree path not found: {wt_path}"})
+
+    h = health_check()
+    if not h.get("brew"):
+        issues.append({"type": "missing_tool", "severity": "warning", "detail": "Homebrew not installed"})
+    if not h.get("ollama"):
+        issues.append({"type": "missing_tool", "severity": "info", "detail": "Ollama not installed"})
+    if h.get("disk_free_gb", 99) < 1:
+        issues.append({"type": "low_disk", "severity": "error", "detail": f"Only {h['disk_free_gb']} GB disk free"})
+    elif h.get("disk_free_gb", 99) < 5:
+        issues.append({"type": "low_disk", "severity": "warning", "detail": f"Only {h['disk_free_gb']} GB disk free"})
+
+    return {"total_issues": len(issues), "issues": issues}
+
+
 def add_feature(name, repos=None):
     c = cfg.load_config()
     import uuid
@@ -126,3 +160,45 @@ def add_feature(name, repos=None):
 def list_features():
     c = cfg.load_config()
     return c.get("features", [])
+
+
+def complete_feature(feature_id):
+    c = cfg.load_config()
+    feature = None
+    for f in c.get("features", []):
+        if f["id"] == feature_id or f["name"] == feature_id:
+            feature = f
+            break
+    if not feature:
+        return {"error": f"Feature not found: {feature_id}"}
+
+    removed_worktrees = []
+    failed_worktrees = []
+    for repo_name, wt_path in feature.get("worktrees", {}).items():
+        if os.path.exists(wt_path):
+            r = subprocess.run(
+                ["git", "worktree", "remove", wt_path],
+                capture_output=True, text=True, timeout=30,
+            )
+            if r.returncode == 0:
+                removed_worktrees.append(repo_name)
+            else:
+                r2 = subprocess.run(
+                    ["git", "worktree", "remove", "--force", wt_path],
+                    capture_output=True, text=True, timeout=30,
+                )
+                if r2.returncode == 0:
+                    removed_worktrees.append(repo_name)
+                else:
+                    failed_worktrees.append(repo_name)
+
+    feature_id_val = feature["id"]
+    c["features"] = [f for f in c["features"] if f["id"] != feature_id_val]
+    cfg.save_config(c)
+
+    return {
+        "id": feature_id_val,
+        "name": feature["name"],
+        "removed_worktrees": removed_worktrees,
+        "failed_worktrees": failed_worktrees,
+    }

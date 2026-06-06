@@ -120,6 +120,29 @@ def cmd_clone(args):
     print(f"Registered {name} in workspace config")
 
 
+def cmd_doctor(args):
+    d = engine.diagnose()
+    if args.json:
+        import json
+        print(json.dumps(d, indent=2, default=str))
+        return
+    if not d["issues"]:
+        print("\033[32mWorkspace looks healthy\033[0m")
+        return
+    print(f"Found {d['total_issues']} issue(s):\n")
+    for issue in d["issues"]:
+        sev = issue["severity"]
+        if sev == "error":
+            marker = "\033[31m✗\033[0m"
+        elif sev == "warning":
+            marker = "\033[33m⚠\033[0m"
+        else:
+            marker = "\033[36mi\033[0m"
+        label = f" [{issue['repo']}]" if "repo" in issue else ""
+        label += f" [{issue['feature']}]" if "feature" in issue else ""
+        print(f"  {marker}{label} {issue['detail']}")
+
+
 def cmd_health(args):
     h = engine.health_check()
     print("Dev Environment Health")
@@ -184,6 +207,17 @@ def cmd_feature(args):
         feature.setdefault("worktrees", {})[repo_name] = os.path.join(ws_dir, repo_name)
         cfg.save_config(c)
         print(f"Created worktree for {repo_name} at {os.path.join(ws_dir, repo_name)}")
+    elif action == "done":
+        result = engine.complete_feature(args.name)
+        if "error" in result:
+            print(f"\033[31m{result['error']}\033[0m")
+            return
+        print(f"Completed feature: \033[36m{result['name']}\033[0m ({result['id']})")
+        if result["removed_worktrees"]:
+            print(f"  Removed worktrees: {', '.join(result['removed_worktrees'])}")
+        if result["failed_worktrees"]:
+            print(f"  \033[33mFailed to remove: {', '.join(result['failed_worktrees'])}\033[0m")
+        print(f"  Feature removed from workspace config")
     else:
         print(f"Unknown feature command: {action}")
 
@@ -258,8 +292,11 @@ def main():
 
     p_health = sub.add_parser("health", help="Check dev environment health")
 
+    p_doctor = sub.add_parser("doctor", help="Diagnose workspace issues")
+    p_doctor.add_argument("--json", action="store_true", help="Output as JSON")
+
     p_feat = sub.add_parser("feature", help="Manage features")
-    p_feat.add_argument("action", choices=["create", "list", "worktree"], help="Feature action")
+    p_feat.add_argument("action", choices=["create", "list", "worktree", "done"], help="Feature action")
     p_feat.add_argument("name", nargs="?", help="Feature name")
     p_feat.add_argument("--repos", "-r", help="Comma-separated repo names")
     p_feat.add_argument("--repo", help="Repo name for worktree command")
@@ -297,6 +334,7 @@ def main():
         "status": cmd_status,
         "clone": cmd_clone,
         "health": cmd_health,
+        "doctor": cmd_doctor,
         "feature": cmd_feature,
         "share": cmd_share,
         "notes": cmd_notes,

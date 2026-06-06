@@ -39,6 +39,11 @@ async def list_tools() -> list[Tool]:
             inputSchema={"type": "object", "properties": {}},
         ),
         Tool(
+            name="workspace_doctor",
+            description="Diagnose workspace issues (missing repos, stale worktrees, no remotes)",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
             name="clone_repo",
             description="Clone a repository into the workspace",
             inputSchema={
@@ -164,6 +169,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "workspace_health":
             h = engine.health_check()
             return [TextContent(type="text", text=json.dumps(h, indent=2))]
+
+        elif name == "workspace_doctor":
+            d = engine.diagnose()
+            return [TextContent(type="text", text=json.dumps(d, indent=2, default=str))]
 
         elif name == "clone_repo":
             url = arguments["url"]

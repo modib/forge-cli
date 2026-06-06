@@ -96,3 +96,67 @@ class TestFeatures:
         feat = engine.add_feature("persist-test")
         c = ws_config.load_config()
         assert any(f["id"] == feat["id"] for f in c["features"])
+
+    def test_complete_feature_by_id(self, ws_config):
+        feat = engine.add_feature("complete-me")
+        result = engine.complete_feature(feat["id"])
+        assert "error" not in result
+        assert result["name"] == "complete-me"
+        c = ws_config.load_config()
+        assert all(f["id"] != feat["id"] for f in c["features"])
+
+    def test_complete_feature_by_name(self, ws_config):
+        engine.add_feature("by-name")
+        result = engine.complete_feature("by-name")
+        assert "error" not in result
+        c = ws_config.load_config()
+        assert all(f["name"] != "by-name" for f in c["features"])
+
+    def test_complete_nonexistent(self, ws_config):
+        result = engine.complete_feature("nonexistent-feature")
+        assert "error" in result
+
+    def test_complete_with_worktree(self, ws_config):
+        feat = engine.add_feature("with-wt")
+        feat_id = feat["id"]
+        c = ws_config.load_config()
+        for f in c["features"]:
+            if f["id"] == feat_id:
+                f["worktrees"]["repo-a"] = "/nonexistent/worktree"
+        ws_config.save_config(c)
+        result = engine.complete_feature(feat_id)
+        assert "error" not in result
+
+
+class TestDiagnose:
+    def test_healthy_empty(self, ws_config):
+        d = engine.diagnose()
+        assert d["total_issues"] >= 0
+
+    def test_detects_missing_repo(self, ws_config, populated_config):
+        d = engine.diagnose()
+        types = [i["type"] for i in d["issues"]]
+        assert "missing_repo" in types
+
+    def test_detects_no_remote(self, ws_config, populated_config, tmp_git_repo):
+        import shutil
+        from ws import config as cfg
+        ws_root = tmp_git_repo.parent.parent / "Workspace"
+        ws_root.mkdir(parents=True, exist_ok=True)
+        dest = ws_root / "noremote"
+        shutil.copytree(str(tmp_git_repo), str(dest))
+        c = ws_config.load_config()
+        ws_config.add_repo(c, {"name": "noremote", "path": str(dest), "provider": "unknown", "url": "", "default_branch": "main"})
+        ws_config.save_config(c)
+        d = engine.diagnose()
+        types = [i["type"] for i in d["issues"]]
+        assert "no_remote" in types
+
+    def test_detects_stale_worktree(self, ws_config):
+        c = ws_config.load_config()
+        ws_config.add_repo(c, {"name": "repo", "path": "/tmp/repo", "provider": "github", "url": "", "default_branch": "main"})
+        c.setdefault("features", []).append({"id": "feat-1", "name": "stale", "worktrees": {"repo": "/nonexistent/wt"}})
+        ws_config.save_config(c)
+        d = engine.diagnose()
+        types = [i["type"] for i in d["issues"]]
+        assert "stale_worktree" in types

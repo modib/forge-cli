@@ -20,6 +20,7 @@ class TestListTools:
         assert "repo_status" in names
         assert "workspace_status" in names
         assert "workspace_health" in names
+        assert "workspace_doctor" in names
         assert "clone_repo" in names
         assert "workspace_scan" in names
         assert "create_feature" in names
@@ -29,7 +30,7 @@ class TestListTools:
         assert "start_session" in names
         assert "share_note" in names
         assert "get_shared_notes" in names
-        assert len(names) == 13
+        assert len(names) == 14
 
     def test_tool_has_schema(self):
         from ws.server import list_tools

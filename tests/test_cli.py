@@ -1,7 +1,7 @@
 import argparse
 import json
 import pytest
-from ws.cli import cmd_status, cmd_health, cmd_config_path, cmd_scan, cmd_init, cmd_share, cmd_notes
+from ws.cli import cmd_status, cmd_health, cmd_config_path, cmd_scan, cmd_init, cmd_share, cmd_notes, cmd_feature, cmd_doctor
 
 
 def _ns(**kw):
@@ -80,3 +80,34 @@ class TestCmdNotes:
         output = " ".join(captured_print)
         assert "stored note" in output
         assert "l1" in output
+
+
+class TestCmdDoctor:
+    def test_doctor_empty(self, ws_config, captured_print):
+        cmd_doctor(_ns(json=False))
+        output = " ".join(captured_print)
+        assert "healthy" in output or "issue" in output
+
+    def test_doctor_json(self, ws_config, captured_print):
+        cmd_doctor(_ns(json=True))
+        import json as j
+        data = j.loads(captured_print[0])
+        assert "total_issues" in data
+        assert "issues" in data
+
+
+class TestCmdFeature:
+    def test_create_and_done(self, ws_config, captured_print):
+        cmd_feature(_ns(action="create", name="test-feat", repos="repo-a,repo-b", repo=None))
+        output = " ".join(captured_print)
+        assert "Created feature" in output
+
+    def test_done_nonexistent(self, ws_config, captured_print):
+        cmd_feature(_ns(action="done", name="no-such-feature", repos=None, repo=None))
+        output = " ".join(captured_print)
+        assert "not found" in output
+
+    def test_list_empty(self, ws_config, captured_print):
+        cmd_feature(_ns(action="list", name=None, repos=None, repo=None))
+        output = " ".join(captured_print)
+        assert "No features" in output
