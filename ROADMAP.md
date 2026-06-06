@@ -23,15 +23,14 @@
 
 **Feature completion, graphify integration, agent interoperability.**
 
-- [ ] `ws feature done <id>` — clean up worktrees + branches
+- [x] `ws feature done <id>` — clean up worktrees + branches
+- [x] `ws doctor` — diagnose workspace issues (missing repos, stale worktrees, no remotes, low disk)
 - [ ] `ws pr create` — create PRs across all feature repos with cross-references
 - [ ] graphify integration: `ws graph <repo>` — knowledge graph for any workspace repo
 - [ ] `ws status` with graph-aware insights
 - [ ] Agent install: `ws install claude` / `ws install codex` — auto-configure MCP
-- [ ] `ws doctor` — diagnose workspace issues (stale worktrees, missing remotes)
 - [ ] `ws log` — view agent session history
 - [ ] `ws config validate` — validate+repair workspace config
-- [ ] JSON output for all commands (machine-readable)
 - [ ] Tab completion (bash, zsh, fish)
 
 ## v0.3 — AI Integration
