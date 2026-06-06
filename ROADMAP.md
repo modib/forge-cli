@@ -15,7 +15,7 @@
 - [x] State model: `~/.workspace/config.json`
 - [x] Session artifacts: `~/.workspace/sessions/<id>/`
 - [x] Homebrew tap: `brew install modib/forge/ws-cli`
-- [x] CI/CD (pytest — 86 tests, CI gate before release)
+- [x] CI/CD (pytest — 99 tests, CI gate before release)
 - [ ] GitHub Pages docs site
 - [ ] Lint + typecheck (ruff, mypy)
 
@@ -25,13 +25,13 @@
 
 - [x] `ws feature done <id>` — clean up worktrees + branches
 - [x] `ws doctor` — diagnose workspace issues (missing repos, stale worktrees, no remotes, low disk)
-- [ ] `ws pr create` — create PRs across all feature repos with cross-references
-- [ ] graphify integration: `ws graph <repo>` — knowledge graph for any workspace repo
-- [ ] `ws status` with graph-aware insights
-- [ ] Agent install: `ws install claude` / `ws install codex` — auto-configure MCP
-- [ ] `ws log` — view agent session history
-- [ ] `ws config validate` — validate+repair workspace config
-- [ ] Tab completion (bash, zsh, fish)
+- [x] `ws pr create` — create PRs across all feature repos with cross-references
+- [x] graphify integration: `ws graph <repo>` — knowledge graph for any workspace repo
+- [x] `ws status` with graph-aware insights
+- [x] Agent install: `ws install claude` / `ws install codex` — auto-configure MCP
+- [x] `ws log` — view agent session history
+- [x] `ws config validate` — validate+repair workspace config
+- [x] Tab completion (bash, zsh, fish)
 
 ## v0.3 — AI Integration
 

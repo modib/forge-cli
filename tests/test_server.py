@@ -30,7 +30,11 @@ class TestListTools:
         assert "start_session" in names
         assert "share_note" in names
         assert "get_shared_notes" in names
-        assert len(names) == 14
+        assert "create_prs" in names
+        assert "generate_graph" in names
+        assert "validate_config" in names
+        assert "generate_completion" in names
+        assert len(names) == 18
 
     def test_tool_has_schema(self):
         from ws.server import list_tools
@@ -130,3 +134,40 @@ class TestCallTool:
         result = await call_tool("repo_status", {"name": None})
         assert len(result) == 1
         assert isinstance(result[0].text, str)
+
+    @pytest.mark.asyncio
+    async def test_generate_graph(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("generate_graph", {"name": "no-such-repo"})
+        data = json.loads(result[0].text)
+        assert "error" in data
+
+    @pytest.mark.asyncio
+    async def test_validate_config_empty(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("validate_config", {})
+        data = json.loads(result[0].text)
+        assert data["valid"] is True
+
+    @pytest.mark.asyncio
+    async def test_validate_config_with_fix(self, ws_config):
+        from ws.server import call_tool
+        c = ws_config.load_config()
+        c["features"] = [{"id": "feat-stale", "name": "stale", "repos": [], "worktrees": {"r": "/nonexistent/wt"}}]
+        ws_config.save_config(c)
+        result = await call_tool("validate_config", {"fix": True})
+        data = json.loads(result[0].text)
+        assert data["valid"] is True
+        assert data.get("_repaired")
+
+    @pytest.mark.asyncio
+    async def test_generate_completion_bash(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("generate_completion", {"shell": "bash"})
+        assert "_ws_completions" in result[0].text
+
+    @pytest.mark.asyncio
+    async def test_generate_completion_zsh(self, ws_config):
+        from ws.server import call_tool
+        result = await call_tool("generate_completion", {"shell": "zsh"})
+        assert "#compdef ws" in result[0].text

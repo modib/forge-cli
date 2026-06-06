@@ -1,6 +1,8 @@
 import os
 import json
 import pytest
+import subprocess
+from unittest.mock import ANY
 from ws import engine
 
 
@@ -160,3 +162,265 @@ class TestDiagnose:
         d = engine.diagnose()
         types = [i["type"] for i in d["issues"]]
         assert "stale_worktree" in types
+
+
+class TestSessionLog:
+    def test_list_empty(self, ws_config):
+        assert engine.list_sessions() == []
+
+    def test_list_recent(self, ws_config):
+        c = ws_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-1", "agent": "test", "started": "2025-01-01T00:00:00", "context": "hello world this is a test"})
+        c["sessions"].append({"id": "sess-2", "agent": "test", "started": "2025-01-02T00:00:00", "context": ""})
+        ws_config.save_config(c)
+        result = engine.list_sessions(limit=10)
+        assert len(result) == 2
+        # Most recent first (reversed)
+        assert result[0]["id"] == "sess-2"
+        assert result[1]["context_preview"] == "hello world this is a test"
+
+    def test_list_limit(self, ws_config):
+        c = ws_config.load_config()
+        c.setdefault("sessions", [])
+        for i in range(5):
+            c["sessions"].append({"id": f"sess-{i}", "agent": "test", "started": "", "context": ""})
+        ws_config.save_config(c)
+        result = engine.list_sessions(limit=3)
+        assert len(result) == 3
+
+    def test_get_session_not_found(self, ws_config):
+        result = engine.get_session("no-such")
+        assert "error" in result
+
+    def test_get_session_from_config(self, ws_config):
+        c = ws_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-1", "agent": "test", "started": "2025-01-01T00:00:00"})
+        ws_config.save_config(c)
+        result = engine.get_session("sess-1")
+        assert "error" not in result
+        assert result["session"]["id"] == "sess-1"
+
+
+class TestValidateConfig:
+    def test_config_not_found(self, tmp_path):
+        import ws.config as cfg
+        cfg.CONFIG_PATH = str(tmp_path / "nonexistent.json")
+        result = engine.validate_config()
+        assert result["valid"] is False
+        assert any("not found" in i["detail"] for i in result["issues"])
+
+    def test_valid_empty(self, ws_config):
+        result = engine.validate_config()
+        assert result["valid"] is True
+
+    def test_invalid_version(self, ws_config):
+        c = ws_config.load_config()
+        c["version"] = 99
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("Unknown config version" in i["detail"] for i in result["issues"])
+
+    def test_missing_workspace_root(self, ws_config):
+        c = ws_config.load_config()
+        del c["workspace_root"]
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("Missing workspace_root" in i["detail"] for i in result["issues"])
+
+    def test_duplicate_repo_name(self, ws_config):
+        c = ws_config.load_config()
+        c["repos"] = [
+            {"name": "dup", "path": "/tmp/a"},
+            {"name": "dup", "path": "/tmp/b"},
+        ]
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("Duplicate repo name" in i["detail"] for i in result["issues"])
+
+    def test_repo_missing_path(self, ws_config):
+        c = ws_config.load_config()
+        c["repos"] = [{"name": "nopath"}]
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("Missing path" in i["detail"] for i in result["issues"])
+
+    def test_repo_path_not_found(self, ws_config):
+        c = ws_config.load_config()
+        c["repos"] = [{"name": "test", "path": "/nonexistent/path"}]
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("Path not found" in i["detail"] for i in result["issues"])
+
+    def test_feature_refs_missing_repo(self, ws_config):
+        c = ws_config.load_config()
+        c["features"] = [{"id": "feat-1", "name": "test", "repos": ["no-such-repo"], "worktrees": {}}]
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("References missing repo" in i["detail"] for i in result["issues"])
+
+    def test_stale_worktree(self, ws_config):
+        c = ws_config.load_config()
+        c["features"] = [{"id": "feat-1", "name": "test", "repos": [], "worktrees": {"repo-a": "/nonexistent/wt"}}]
+        ws_config.save_config(c)
+        result = engine.validate_config()
+        assert any("Stale worktree" in i["detail"] for i in result["issues"])
+
+    def test_fix_removes_stale_worktree(self, ws_config):
+        c = ws_config.load_config()
+        c["features"] = [{"id": "feat-1", "name": "test", "repos": [], "worktrees": {"repo-a": "/nonexistent/wt"}}]
+        ws_config.save_config(c)
+        result = engine.validate_config(fix=True)
+        assert not any("Stale worktree" in i.get("detail", "") for i in result["issues"])
+        assert result.get("_repaired")
+
+
+class TestCreatePrs:
+    def test_feature_not_found(self, ws_config):
+        result = engine.create_prs("nonexistent")
+        assert "error" in result
+        assert "not found" in result["error"]
+
+    def test_no_repos_in_feature(self, ws_config):
+        engine.add_feature("empty-feat")
+        result = engine.create_prs("empty-feat")
+        assert "error" in result
+        assert "No repos" in result["error"]
+
+    def test_repo_not_found(self, ws_config):
+        engine.add_feature("my-feat", repos=["no-such-repo"])
+        result = engine.create_prs("my-feat")
+        assert "prs" in result
+        assert result["prs"][0].get("error") == "Repo not found in workspace config"
+
+    def test_repo_path_not_found(self, ws_config, populated_config):
+        engine.add_feature("my-feat", repos=["repo-a"])
+        result = engine.create_prs("my-feat")
+        assert result["prs"][0].get("error") == "Repo path not found"
+
+    def test_gh_not_installed(self, ws_config, mocker):
+        mocker.patch("shutil.which", return_value=None)
+        engine.add_feature("my-feat", repos=["repo-a"])
+        result = engine.create_prs("my-feat")
+        assert "error" in result
+        assert "gh) not found" in result["error"]
+
+    def test_branch_not_found(self, ws_config, tmp_git_repo):
+        import ws.config as cfg
+        ws_root = tmp_git_repo.parent.parent / "Workspace"
+        ws_root.mkdir(parents=True, exist_ok=True)
+        c = ws_config.load_config()
+        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        ws_config.save_config(c)
+        engine.add_feature("my-feat", repos=["my-repo"])
+        result = engine.create_prs("my-feat")
+        assert result["prs"][0].get("error", "").startswith("Branch 'feature/my-feat' not found")
+
+    def test_create_pr_success(self, ws_config, tmp_git_repo, mocker):
+        # Create a feature branch in the git repo
+        subprocess.run(["git", "checkout", "-b", "feature/my-feat"], cwd=tmp_git_repo, capture_output=True, check=True)
+        ws_root = tmp_git_repo.parent.parent / "Workspace"
+        ws_root.mkdir(parents=True, exist_ok=True)
+        c = ws_config.load_config()
+        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        ws_config.save_config(c)
+        engine.add_feature("my-feat", repos=["my-repo"])
+        mocker.patch("shutil.which", return_value="/usr/bin/gh")
+        mock_run = mocker.patch("subprocess.run")
+        mock_run.return_value = subprocess.CompletedProcess([], 0, stdout="https://github.com/test/my-repo/pull/1\n", stderr="")
+        result = engine.create_prs("my-feat")
+        assert "error" not in result
+        assert result["prs"][0]["status"] == "created"
+        assert result["prs"][0]["url"] == "https://github.com/test/my-repo/pull/1"
+
+    def test_create_pr_draft(self, ws_config, tmp_git_repo, mocker):
+        subprocess.run(["git", "checkout", "-b", "feature/draft-feat"], cwd=tmp_git_repo, capture_output=True, check=True)
+        ws_root = tmp_git_repo.parent.parent / "Workspace"
+        ws_root.mkdir(parents=True, exist_ok=True)
+        c = ws_config.load_config()
+        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        ws_config.save_config(c)
+        engine.add_feature("draft-feat", repos=["my-repo"])
+        mocker.patch("shutil.which", return_value="/usr/bin/gh")
+        mock_run = mocker.patch("subprocess.run")
+        mock_run.return_value = subprocess.CompletedProcess([], 0, stdout="https://github.com/test/my-repo/pull/2\n", stderr="")
+        result = engine.create_prs("draft-feat", draft=True)
+        assert result["prs"][0]["status"] == "created"
+        call_args = mock_run.call_args_list
+        # Find the gh pr create call (not git rev-parse or pr edit)
+        gh_create_calls = [c for c in call_args if c[0][0][:2] == ["gh", "pr"] and c[0][0][2] == "create"]
+        assert len(gh_create_calls) == 1
+        assert "--draft" in gh_create_calls[0][0][0]
+
+    def test_cross_reference_multi_repo(self, ws_config, tmp_path, mocker):
+        import ws.config as cfg
+        # Create two repos
+        repo_a = tmp_path / "repo-a"
+        repo_b = tmp_path / "repo-b"
+        for rp in [repo_a, repo_b]:
+            rp.mkdir()
+            subprocess.run(["git", "init"], cwd=rp, capture_output=True, check=True)
+            subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=rp, capture_output=True, check=True)
+            subprocess.run(["git", "config", "user.name", "T"], cwd=rp, capture_output=True, check=True)
+            (rp / "README.md").write_text(f"# {rp.name}")
+            subprocess.run(["git", "add", "."], cwd=rp, capture_output=True, check=True)
+            subprocess.run(["git", "commit", "-m", "init"], cwd=rp, capture_output=True, check=True)
+            subprocess.run(["git", "checkout", "-b", "feature/cross"], cwd=rp, capture_output=True, check=True)
+        ws_root = tmp_path / "Workspace"
+        ws_root.mkdir(parents=True, exist_ok=True)
+        c = ws_config.load_config()
+        cfg.add_repo(c, {"name": "repo-a", "path": str(repo_a), "provider": "github", "url": "https://github.com/test/repo-a.git", "default_branch": "main"})
+        cfg.add_repo(c, {"name": "repo-b", "path": str(repo_b), "provider": "github", "url": "https://github.com/test/repo-b.git", "default_branch": "main"})
+        cfg.save_config(c)
+        engine.add_feature("cross", repos=["repo-a", "repo-b"])
+        mocker.patch("shutil.which", return_value="/usr/bin/gh")
+        mock_run = mocker.patch("subprocess.run")
+        # Return different URLs for each call to gh pr create (which is called after git rev-parse for each repo)
+        # First two calls are git rev-parse for repo-a and repo-b
+        # Then gh pr create for repo-a, then gh pr create for repo-b, then gh pr edit for both
+        mock_run.side_effect = [
+            subprocess.CompletedProcess([], 0, stdout="", stderr=""),  # git rev-parse repo-a
+            subprocess.CompletedProcess([], 0, stdout="", stderr=""),  # git rev-parse repo-b
+            subprocess.CompletedProcess([], 0, stdout="https://github.com/test/repo-a/pull/10\n", stderr=""),  # gh pr create repo-a
+            subprocess.CompletedProcess([], 0, stdout="https://github.com/test/repo-b/pull/20\n", stderr=""),  # gh pr create repo-b
+            subprocess.CompletedProcess([], 0, stdout="", stderr=""),  # gh pr edit repo-a
+            subprocess.CompletedProcess([], 0, stdout="", stderr=""),  # gh pr edit repo-b
+        ]
+        result = engine.create_prs("cross")
+        assert "error" not in result
+        assert len(result["prs"]) == 2
+        assert result["prs"][0]["cross_referenced"] is True
+        assert result["prs"][1]["cross_referenced"] is True
+        # Verify gh pr edit was called with cross-refs
+        edit_calls = [c for c in mock_run.call_args_list if c[0][0][:3] == ["gh", "pr", "edit"]]
+        assert len(edit_calls) == 2
+        # repo-a's edit body should reference repo-b (and not itself)
+        body_a = edit_calls[0][0][0]
+        body_a_text = body_a[body_a.index("--body") + 1]
+        assert "Related PRs" in body_a_text
+        assert "repo-b" in body_a_text
+        # repo-b's edit body should reference repo-a (and not itself)
+        body_b = edit_calls[1][0][0]
+        body_b_text = body_b[body_b.index("--body") + 1]
+        assert "Related PRs" in body_b_text
+        assert "repo-a" in body_b_text
+
+    def test_create_pr_custom_body(self, ws_config, tmp_git_repo, mocker):
+        subprocess.run(["git", "checkout", "-b", "feature/custom"], cwd=tmp_git_repo, capture_output=True, check=True)
+        ws_root = tmp_git_repo.parent.parent / "Workspace"
+        ws_root.mkdir(parents=True, exist_ok=True)
+        c = ws_config.load_config()
+        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        ws_config.save_config(c)
+        engine.add_feature("custom", repos=["my-repo"])
+        mocker.patch("shutil.which", return_value="/usr/bin/gh")
+        mock_run = mocker.patch("subprocess.run")
+        mock_run.return_value = subprocess.CompletedProcess([], 0, stdout="https://github.com/test/my-repo/pull/3\n", stderr="")
+        result = engine.create_prs("custom", title="Custom Title", body="Custom body text")
+        call_args = mock_run.call_args_list
+        gh_create_calls = [c for c in call_args if c[0][0][:3] == ["gh", "pr", "create"]]
+        assert len(gh_create_calls) == 1
+        create_args = gh_create_calls[0][0][0]
+        title_idx = create_args.index("--title") + 1
+        body_idx = create_args.index("--body") + 1
+        assert create_args[title_idx] == "Custom Title"
+        assert create_args[body_idx] == "Custom body text"

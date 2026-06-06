@@ -1,10 +1,13 @@
 import json
+import os
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, LoggingLevel
 from . import config as cfg
 from . import engine
 from . import git
+from . import graph as wsgraph
+from .cli import _completion_script
 
 app = Server("ws")
 
@@ -147,6 +150,62 @@ async def list_tools() -> list[Tool]:
                 "required": ["group"],
             },
         ),
+        Tool(
+            name="generate_graph",
+            description="Generate a knowledge graph for a workspace repo (co-change or branches)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Repository name"},
+                    "graph_type": {
+                        "type": "string",
+                        "enum": ["co-change", "branches"],
+                        "description": "Type of graph to generate",
+                    },
+                    "depth": {"type": "integer", "description": "Commits to analyze (default 50)"},
+                },
+                "required": ["name"],
+            },
+        ),
+        Tool(
+            name="create_prs",
+            description="Create PRs across all repos in a feature with cross-references",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "feature_id": {"type": "string", "description": "Feature name or ID"},
+                    "title": {"type": "string", "description": "PR title (optional)"},
+                    "body": {"type": "string", "description": "PR body text (optional)"},
+                    "draft": {"type": "boolean", "description": "Create as draft PR"},
+                },
+                "required": ["feature_id"],
+            },
+        ),
+        Tool(
+            name="validate_config",
+            description="Validate workspace configuration and optionally repair issues",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "fix": {"type": "boolean", "description": "Auto-repair fixable issues (stale worktrees)"},
+                },
+            },
+        ),
+        Tool(
+            name="generate_completion",
+            description="Generate shell completion script for bash, zsh, or fish",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "shell": {
+                        "type": "string",
+                        "enum": ["bash", "zsh", "fish"],
+                        "description": "Shell type",
+                    },
+                },
+                "required": ["shell"],
+            },
+        ),
     ]
 
 
@@ -286,6 +345,31 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                     return [TextContent(type="text", text=json.dumps(g.get("notes", []), indent=2))]
             return [TextContent(type="text", text="[]")]
 
+        elif name == "generate_graph":
+            result = wsgraph.generate_graph(
+                arguments["name"],
+                graph_type=arguments.get("graph_type", "co-change"),
+                depth=arguments.get("depth", 50),
+            )
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "create_prs":
+            result = engine.create_prs(
+                arguments["feature_id"],
+                title=arguments.get("title"),
+                body=arguments.get("body"),
+                draft=arguments.get("draft", False),
+            )
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "validate_config":
+            result = engine.validate_config(fix=arguments.get("fix", False))
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "generate_completion":
+            script = _completion_script(arguments["shell"])
+            return [TextContent(type="text", text=script)]
+
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
@@ -300,6 +384,3 @@ async def run_server():
             streams[1],
             app.create_initialization_options(),
         )
-
-
-import os
