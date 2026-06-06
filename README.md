@@ -135,6 +135,12 @@ pipx install -e .
 
 See [ROADMAP.md](./ROADMAP.md) for the development plan.
 
+## Links
+
+- **Docs:** https://modib.github.io/ws-cli/
+- **Repo:** https://github.com/modib/ws-cli
+- **Forge Project:** https://github.com/modib/forge
+
 ## License
 
 MIT
