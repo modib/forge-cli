@@ -1,0 +1,111 @@
+# Getting Started
+
+## Prerequisites
+
+- Python 3.10+
+- git 2.20+
+- (optional) [Homebrew](https://brew.sh) for package management
+- (optional) [gh CLI](https://cli.github.com) for GitHub auth
+- (optional) [Ollama](https://ollama.ai) for local AI
+
+## Install
+
+```bash
+pipx install ws-cli
+```
+
+Verify:
+
+```bash
+ws --version
+# ws 0.1.0
+```
+
+## Initialize
+
+```bash
+ws init --provider github
+```
+
+This creates `~/.workspace/config.json`, checks GitHub auth (via `gh` CLI), and registers your GitHub username.
+
+```
+Initialized workspace at /home/user/.workspace
+Workspace root: /home/user/Workspace
+Providers: github, gitlab
+```
+
+## Discover Repos
+
+```bash
+ws scan
+```
+
+This finds all git repositories in `~/Workspace` and registers them.
+
+```
+Scanned 12 repos in /home/user/Workspace
+Added 8 new repos:
+  + my-project
+  + another-project
+  + docs
+  ...
+```
+
+## Check Status
+
+```bash
+ws status
+```
+
+Shows all registered repos with branch, dirty state, and ahead/behind:
+
+```
+Workspace: /home/user/Workspace
+Repos: 12 total
+  (2 dirty, 1 ahead, 3 behind)
+
+  my-project ●  main +2/-1
+    fix: resolve auth token refresh race
+  another-project  main
+    docs: update API reference
+  docs  master -3
+    Merge pull request #42 from user/fix-typo
+  ...
+```
+
+## Machine-Readable Output
+
+```bash
+ws status --json
+```
+
+Returns the full status as JSON — useful for scripts, AI agents, and pipeline integration.
+
+## Check Dev Environment
+
+```bash
+ws health
+```
+
+```
+Dev Environment Health
+---------------------
+  ✓ brew
+  ✗ ollama
+  ✓ gh
+  ✓ python3
+  ✓ node
+  ✓ npm
+  ✓ gh auth
+
+Disk: 28.8% used (150.7 GB free of 228.0 GB)
+```
+
+## Connect AI Agents
+
+```bash
+ws serve
+```
+
+Starts the MCP stdio server with 13 tools. See the [MCP documentation](./mcp.md) for agent setup.
