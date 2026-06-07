@@ -413,7 +413,7 @@ def _completion_script(shell):
     local install_agents="claude codex"
     local graph_types="co-change branches"
     local graph_formats="json text"
-    local config_actions="path validate"
+    local config_actions="path validate remove-repo"
 
     if [[ $cword -eq 1 ]]; then
         COMPREPLY=($(compgen -W "$subcmds" -- "$cur"))
@@ -554,7 +554,7 @@ _forge() {
                     _arguments "--group[Group name]:" "--label[Optional label]:"
                     ;;
                 config)
-                    _arguments "1:action:(path validate)" "--fix[Auto-repair fixable issues]"
+                    _arguments "1:action:(path validate remove-repo)" "--fix[Auto-repair fixable issues]"
                     ;;
                 completion)
                     _arguments "1:shell:(bash zsh fish)"
@@ -637,7 +637,7 @@ _forge "$@"
     complete -c forge -n "__fish_seen_subcommand_from share" -l label -r
 
     # config
-    complete -c forge -n "__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from path validate" -xa "path validate"
+    complete -c forge -n "__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from path validate remove-repo" -xa "path validate remove-repo"
     complete -c forge -n "__fish_seen_subcommand_from config; and __fish_seen_subcommand_from validate" -l fix
 
     # completion
@@ -776,8 +776,24 @@ def cmd_config_path(args):
             print("\n\033[32mRepaired:\033[0m")
             for r in result["_repaired"]:
                 print(f"  \033[32m✓\033[0m {r}")
+    elif args.sub == "remove-repo":
+        cmd_config_remove_repo(args)
     else:
         print(cfg.CONFIG_PATH)
+
+
+def cmd_config_remove_repo(args):
+    if not args.name:
+        print("\033[31mUsage: forge config remove-repo <name>\033[0m")
+        return
+    c = cfg.load_config()
+    repo = cfg.repo_by_name(c, args.name)
+    if not repo:
+        print(f"\033[31mRepo not found: {args.name}\033[0m")
+        return
+    cfg.remove_repo(c, args.name)
+    cfg.save_config(c)
+    print(f"\033[32mRemoved {args.name} from config\033[0m")
 
 
 def main():
@@ -843,8 +859,9 @@ def main():
     p_pr.add_argument("--draft", action="store_true", help="Create as draft PR")
 
     p_config = sub.add_parser("config", help="Manage workspace configuration")
-    p_config.add_argument("sub", nargs="?", default="path", choices=["path", "validate"])
+    p_config.add_argument("sub", nargs="?", default="path", choices=["path", "validate", "remove-repo"])
     p_config.add_argument("--fix", action="store_true", help="Auto-repair fixable issues")
+    p_config.add_argument("name", nargs="?", help="Repository name (for remove-repo)")
 
     p_deps = sub.add_parser("deps", help="Manage project dependencies")
     p_deps.add_argument("action", choices=["list", "outdated"], help="Dependency action")

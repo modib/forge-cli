@@ -360,6 +360,10 @@ def validate_config(fix=False):
                 issues.append({"severity": "warning", "feature": f.get("name", fid), "detail": f"Stale worktree: {repo_name} -> {wt_path}"})
     if fix:
         repaired = []
+        for r in list(c.get("repos", [])):
+            if not os.path.exists(r["path"]):
+                cfg.remove_repo(c, r["name"])
+                repaired.append(f"Removed stale repo: {r['name']} (path not found)")
         for f in c.get("features", []):
             for repo_name in list(f.get("worktrees", {}).keys()):
                 wt_path = f["worktrees"][repo_name]
@@ -369,6 +373,7 @@ def validate_config(fix=False):
         if repaired:
             cfg.save_config(c)
         issues = [i for i in issues if "Stale worktree" not in i.get("detail", "")]
+        issues = [i for i in issues if "Path not found" not in i.get("detail", "")]
     result = {"valid": len([i for i in issues if i["severity"] == "error"]) == 0, "issues": issues}
     if fix and repaired:
         result["_repaired"] = repaired
