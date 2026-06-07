@@ -239,7 +239,7 @@ Execute a natural language workspace command. No flags needed — it just works.
 ```bash
 ws exec "show me dirty repos"           # Keyword match → ws status
 ws exec "scan for new repos"            # Keyword match → ws scan
-ws exec "find vulnerable libraries"     # Keyword fail → GitHub Models → local model
+ws exec "find vulnerable libraries"     # Keyword match → ws scan
 ```
 
 **Resolution chain** (automatic, transparent):
