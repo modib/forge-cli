@@ -2,6 +2,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -422,6 +423,7 @@ _INTENT_MAP = {
     "log": ["log", "sessions", "history", "recent"],
     "ai_setup": ["setup ai", "install model", "configure ollama", "setup ollama"],
     "ai_status": ["ai ready", "is model running", "check ollama", "ai status", "model status"],
+    "ask": ["tell me about", "what is", "explain", "i wonder", "how does", "question", "ask"],
     "help": ["help", "commands", "what can you do", "usage"],
 }
 
@@ -447,6 +449,7 @@ _INTENT_COMMANDS = {
     "log": "forge log",
     "ai_setup": "forge ai setup",
     "ai_status": "forge ai status",
+    "ask": "forge ask",
     "help": "forge --help",
 }
 
@@ -474,6 +477,7 @@ Available intents:
 - log: View agent session history
 - ai_setup: Set up AI backend (Ollama) and pull model
 - ai_status: Check if AI model is ready for inference
+- ask: Ask a question about the workspace (keywords: what is, explain, tell me about, how does)
 - help: Show help and available commands
 
 Respond with ONLY a JSON object: {{"intent": "<intent_name>", "confidence": 0.95}}
@@ -624,12 +628,15 @@ def _resolve_intent_keywords(query):
     return None
 
 
-def _run_command(intent, dry_run=False, resolved_by=""):
+def _run_command(intent, dry_run=False, resolved_by="", query=None):
     command = _INTENT_COMMANDS[intent]
+    if intent == "ask" and query:
+        command = f"forge ask {shlex.quote(query)}"
+    timeout = 120 if intent == "ask" else 30
     if dry_run:
         return {"intent": intent, "command": command, "resolved_by": resolved_by or "keyword"}
     try:
-        out = subprocess.run(command.split(), capture_output=True, text=True, timeout=30)
+        out = subprocess.run(command.split(), capture_output=True, text=True, timeout=timeout)
         output = out.stdout.strip()
         if out.returncode != 0:
             output = out.stderr.strip() or output
@@ -641,11 +648,11 @@ def _run_command(intent, dry_run=False, resolved_by=""):
 def exec_nl(query, dry_run=False):
     intent = _resolve_intent_keywords(query)
     if intent:
-        return _run_command(intent, dry_run, resolved_by="keyword")
+        return _run_command(intent, dry_run, resolved_by="keyword", query=query)
 
     intent = _resolve_with_github_models(query)
     if intent:
-        return _run_command(intent, dry_run, resolved_by="GitHub Models")
+        return _run_command(intent, dry_run, resolved_by="GitHub Models", query=query)
 
     profile = detect_hardware()
     backend = profile["recommended_backend"]
@@ -662,5 +669,5 @@ def exec_nl(query, dry_run=False):
     else:
         intent = _resolve_with_ollama(query, model)
     if intent:
-        return _run_command(intent, dry_run, resolved_by=f"local model ({backend})")
+        return _run_command(intent, dry_run, resolved_by=f"local model ({backend})", query=query)
     return {"error": "I couldn't understand that query. Try something like 'show me dirty repos' or 'forge status'."}

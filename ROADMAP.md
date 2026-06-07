@@ -70,10 +70,17 @@
 - [x] `forge cve report` — aggregate security summary across workspace
 
 ### v0.4.2 — RAG + Gemma 4
-- [ ] nomic-embed-text embeddings + FAISS vector store
-- [ ] `forge ask "natural language query"` — semantic search across workspace
-- [ ] Swap suggested model: Gemma 2 2B → Gemma 4 E2B (128K ctx, function calling)
-- [ ] Cached CVE → RAG context for `forge ask`
+- [x] nomic-embed-text embeddings + FAISS vector store (pure Python cosine sim, no FAISS dep)
+- [x] `forge ask "natural language query"` — semantic search across workspace
+- [x] Swap suggested model: Gemma 2 2B → Gemma 4 E2B (128K ctx, function calling)
+- [x] Cached CVE → RAG context for `forge ask`
+- [x] `forge index` — build/update RAG index from READMEs + deps + CVEs
+- [x] `forge scan` auto-triggers index rebuild when new repos found
+- [x] `forge exec` routes "tell me about", "what is", "explain" to `forge ask`
+
+### v0.4.3 — Intent Map + Docs
+- [x] 22 intents in keyword router (was 8), length-best-match sorting
+- [x] docs updated for v0.4.x features (CVE, deps, config, RAG, exec intents)
 
 ## v0.5 — Agent Handoff & Dashboard
 

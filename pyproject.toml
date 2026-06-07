@@ -1,6 +1,6 @@
 [project]
 name = "forge-cli"
-version = "0.4.1"
+version = "0.4.3"
 description = "Forge — local-first AI workspace toolkit for Forge OS"
 requires-python = ">=3.10"
 authors = [{ name = "Forge" }]

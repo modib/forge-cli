@@ -10,6 +10,7 @@ from . import install as forgeinstall
 from . import ai as forgeai
 from . import deps as forge_deps
 from . import cve as forge_cve
+from . import rag as forge_rag
 
 
 def cmd_init(args):
@@ -34,6 +35,9 @@ def cmd_scan(args):
         deps = forge_deps.update_deps_for_repo(repo["name"], repo["path"])
         total_deps += len(deps)
     print(f"Parsed {total_deps} dependencies across {total} repos")
+    if added and not getattr(args, "no_index", False):
+        print("New repos found. Updating workspace index...")
+        forge_rag.build_index()
 
 
 def cmd_status(args):
@@ -408,7 +412,7 @@ def _completion_script(shell):
     local cur prev words cword
     _init_completion || return
 
-    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve completion"
+    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai completion"
     local feature_actions="create list worktree done"
     local pr_actions="create"
     local install_agents="claude codex"
@@ -467,6 +471,9 @@ def _completion_script(shell):
         cve)
             COMPREPLY=($(compgen -W "refresh list describe report --ecosystem --min-score" -- "$cur"))
             ;;
+        ask)
+            COMPREPLY=()
+            ;;
         share)
             COMPREPLY=($(compgen -W "--group --label" -- "$cur"))
             ;;
@@ -514,6 +521,8 @@ _forge() {
                 "config[Manage workspace configuration]" \\
                 "deps[Manage project dependencies]" \\
                 "cve[CVE vulnerability scanning]" \\
+                "index[Build RAG index for semantic search]" \\
+                "ask[Ask a question about your workspace]" \\
                 "completion[Generate shell completion scripts]"
             ;;
         args)
@@ -568,6 +577,11 @@ _forge() {
                         "--min-score[Minimum CVSS score]:" \\
                         "--refresh[Re-fetch details from OSV.dev]"
                     ;;
+                index)
+                    _arguments
+                    ;;
+                ask)
+                    _arguments "1:query:Natural language question"
                 completion)
                     _arguments "1:shell:(bash zsh fish)"
                     ;;
@@ -596,7 +610,7 @@ _forge "$@"
 '''
     elif shell == "fish":
         return '''function _forge_completions
-    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve completion
+    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai completion
 
     # Top-level commands
     complete -c forge -f
@@ -825,6 +839,17 @@ def cmd_cve(args):
                 print(f"    {pkg}  ({count})")
 
 
+def cmd_index(args):
+    count = forge_rag.build_index()
+    if count == 0:
+        print("No chunks indexed. Run `forge scan` to discover repos first.")
+
+
+def cmd_ask(args):
+    answer = forge_rag.ask(args.query)
+    print(answer)
+
+
 def cmd_serve(args):
     import asyncio
     from .server import run_server
@@ -882,7 +907,8 @@ def main():
     p_init = sub.add_parser("init", help="Initialize workspace config")
     p_init.add_argument("--provider", choices=["github", "gitlab"], help="Auth provider")
 
-    sub.add_parser("scan", help="Discover repos in workspace root")
+    p_scan = sub.add_parser("scan", help="Discover repos in workspace root")
+    p_scan.add_argument("--no-index", action="store_true", help="Skip RAG index rebuild")
 
     p_status = sub.add_parser("status", help="Show workspace status")
     p_status.add_argument("name", nargs="?", help="Show status for a specific repo")
@@ -953,6 +979,11 @@ def main():
     p_cve.add_argument("--min-score", type=float, default=None, help="Minimum CVSS score filter")
     p_cve.add_argument("--refresh", action="store_true", help="Re-fetch details from OSV.dev")
 
+    sub.add_parser("index", help="Build RAG index for semantic workspace search")
+
+    p_ask = sub.add_parser("ask", help="Ask a question about your workspace")
+    p_ask.add_argument("query", help="Natural language question")
+
     p_completion = sub.add_parser("completion", help="Generate shell completion script")
     p_completion.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
 
@@ -1001,6 +1032,8 @@ def main():
         "config": cmd_config_path,
         "deps": cmd_deps,
         "cve": cmd_cve,
+        "index": cmd_index,
+        "ask": cmd_ask,
         "completion": cmd_completion,
         "ai": cmd_ai,
         "exec": cmd_exec,
