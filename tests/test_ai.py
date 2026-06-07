@@ -131,6 +131,8 @@ class TestResolveIntent:
     def test_scan_intent(self):
         assert ai._resolve_intent_keywords("scan for new repos") == "scan"
         assert ai._resolve_intent_keywords("discover repos") == "scan"
+        assert ai._resolve_intent_keywords("vulnerable libraries") == "scan"
+        assert ai._resolve_intent_keywords("security audit") == "scan"
 
     def test_health_intent(self):
         assert ai._resolve_intent_keywords("health check") == "health"
@@ -154,6 +156,7 @@ class TestResolveIntent:
 
     def test_unknown_intent(self):
         assert ai._resolve_intent_keywords("do something crazy") is None
+        assert ai._resolve_intent_keywords("play music") is None
 
 
 class TestExecNl:
@@ -186,10 +189,10 @@ class TestAiConfig:
     def test_config_set_nested(self, ws_config):
         class FakeArgs:
             key = "routing.local"
-            value = "phi-4-mini:3.8b"
+            value = "gemma2:2b"
         ai.ai_config_cmd(FakeArgs())
         c = ws_config.load_config()
-        assert c["ai"]["routing"]["local"] == "phi-4-mini:3.8b"
+        assert c["ai"]["routing"]["local"] == "gemma2:2b"
 
     def test_config_unset(self, ws_config):
         c = ws_config.load_config()

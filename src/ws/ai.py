@@ -399,7 +399,7 @@ def _benchmark_mlx(model=None, prompt="Hello"):
 
 _INTENT_MAP = {
     "status": ["status", "state", "what's going on", "what is going on", "show me", "dirty", "behind", "ahead"],
-    "scan": ["scan", "discover", "find new", "new repos"],
+    "scan": ["scan", "discover", "find new", "new repos", "vulnerable", "security", "audit"],
     "health": ["health", "environment", "check tools", "dev environment"],
     "doctor": ["doctor", "diagnose", "issues", "problems", "what's wrong"],
     "feature_list": ["features", "feature list", "active features"],
@@ -421,7 +421,7 @@ _EXEC_PROMPT = """You are a workspace command router. Given a natural language q
 
 Available intents:
 - status: Check workspace/repo status (keywords: dirty, behind, ahead, state, what's going on)
-- scan: Discover new repos in workspace root
+- scan: Discover new repos, check for vulnerable libraries or security issues
 - health: Check dev environment tools (brew, ollama, gh, python)
 - doctor: Diagnose workspace issues (missing repos, stale worktrees)
 - feature_list: List active feature branches
