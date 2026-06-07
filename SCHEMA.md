@@ -1,6 +1,8 @@
 # forge Workspace Schema & MCP Tool Reference
 
-## State Model (`~/.forge/config.json`)
+## State Model
+
+Config lives in the active workspace directory (`forge config path` shows the actual path). The schema below applies to both `~/.forge/config.json` (primary) and `~/.workspace/config.json` (fallback).
 
 ```jsonc
 {
@@ -93,15 +95,23 @@
 
 ### File Locations
 
-| Path | Purpose |
-|------|---------|
-| `~/.forge/config.json` | Workspace state (repos, groups, features, sessions, AI config) |
-| `~/.forge/deps.json` | Parsed dependency cache (6 ecosystems) |
-| `~/.forge/cve.json` | OSV.dev vulnerability cache |
-| `~/.forge/sessions/<id>/meta.json` | Session metadata |
-| `~/.forge/sessions/<id>/transcript.md` | Session transcript |
-| `~/.forge/worktrees/<feature-id>/<repo>/` | Git worktrees for active feature |
-| `~/.Brewfile` | Homebrew package manifest (brew bundle --global) |
+The active workspace directory depends on which exists at runtime. Run `forge config path` to see the actual path.
+
+| Path | Purpose | When used |
+|------|---------|-----------|
+| `~/.forge/config.json` | Workspace state (repos, groups, features, sessions, AI config) | Primary |
+| `~/.workspace/config.json` | Same schema | Fallback if `~/.forge/` doesn't exist |
+| `~/.forge/deps.json` | Parsed dependency cache (6 ecosystems) | Primary |
+| `~/.workspace/deps.json` | Same | Fallback |
+| `~/.forge/cve.json` | OSV.dev vulnerability cache | Primary |
+| `~/.workspace/cve.json` | Same | Fallback |
+| `~/.forge/sessions/<id>/meta.json` | Session metadata | Primary |
+| `~/.workspace/sessions/<id>/meta.json` | Same | Fallback |
+| `~/.forge/sessions/<id>/transcript.md` | Session transcript | Primary |
+| `~/.workspace/sessions/<id>/transcript.md` | Same | Fallback |
+| `~/.forge/.workspaces/<feature-id>/<repo>/` | Git worktrees for active feature | Primary |
+| `~/.workspace/.workspaces/<feature-id>/<repo>/` | Same | Fallback |
+| `~/.Brewfile` | Homebrew package manifest (brew bundle --global) | Always |
 
 ## CLI Commands
 

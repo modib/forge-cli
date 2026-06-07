@@ -21,7 +21,12 @@ Initialize workspace config and provider auth.
 forge init [--provider github|gitlab]
 ```
 
-Creates `~/.forge/config.json` (fallback: `~/.workspace`) with provider settings. With `--provider github`, checks `gh auth status` and auto-detects GitHub username.
+Creates workspace config in the active directory. Run `forge config path` to see which location is used:
+
+- `~/.forge/config.json` — primary location (created by `forge init`)
+- `~/.workspace/config.json` — automatic fallback if `~/.forge/` doesn't exist
+
+With `--provider github`, checks `gh auth status` and auto-detects GitHub username.
 
 ---
 
@@ -112,7 +117,7 @@ forge feature done <id>
 
 **`list`**: Lists all active features and their worktree count.
 
-**`worktree`**: Creates a git worktree for a repo in the feature. Without `--repo`, lists repos in the feature. Worktrees go in `~/.forge/.workspaces/<feature-id>/<repo>/` (fallback: `~/.workspace`).
+**`worktree`**: Creates a git worktree for a repo in the feature. Without `--repo`, lists repos in the feature. Worktrees go in `<active-dir>/.workspaces/<feature-id>/<repo>/` (see `forge config path`).
 
 **`done`**: Cleans up all worktrees and branches for a feature, removes from config.
 
@@ -152,7 +157,7 @@ Share a note across projects in a group.
 forge share <content> [--group <name>] [--label <label>]
 ```
 
-Notes are stored in `~/.forge/config.json` (fallback: `~/.workspace`) under `groups[].notes`. Any agent or user in the group can read them.
+Notes are stored in `<active-dir>/config.json` under `groups[].notes` (run `forge config path` to find the active directory). Any agent or user in the group can read them.
 
 ---
 
@@ -208,7 +213,7 @@ Exposes 24 tools over stdio for MCP-compatible AI agents. See [MCP server docs](
 
 ### `forge config`
 
-Manage workspace configuration.
+Manage workspace configuration. Config lives in `~/.forge/config.json` (or `~/.workspace/config.json` as fallback — run `forge config path` to see the active path).
 
 ```bash
 forge config                     # Show config file path
@@ -234,7 +239,7 @@ forge deps list --ecosystem pypi     # Filter by ecosystem
 forge deps outdated                  # Points to: forge cve list
 ```
 
-Parses 6 lockfile formats: `package-lock.json` (npm), `Cargo.lock` (Rust), `pyproject.toml` + `requirements.txt` (Python), `go.sum` (Go), `Gemfile.lock` (Ruby). Cached in `~/.forge/deps.json`.
+Parses 6 lockfile formats: `package-lock.json` (npm), `Cargo.lock` (Rust), `pyproject.toml` + `requirements.txt` (Python), `go.sum` (Go), `Gemfile.lock` (Ruby). Cached in `<active-dir>/deps.json` (run `forge config path` for the active directory).
 
 ---
 
@@ -253,7 +258,7 @@ forge cve report                         # Aggregate security summary
 forge cve report --min-score 7.0         # High+ severity only
 ```
 
-Results cached in `~/.forge/cve.json`. The `report` command breaks down by severity (critical/high/moderate/low/unknown), ecosystem, and top affected packages.
+Results cached in `<active-dir>/cve.json` (run `forge config path` for the active directory). The `report` command breaks down by severity (critical/high/moderate/low/unknown), ecosystem, and top affected packages.
 
 ---
 
@@ -323,7 +328,7 @@ forge ai config routing.local "gemma4:e2b"  # Set model for local routing
 forge ai config provider                 # Unset/remove a key
 ```
 
-Config is stored in `~/.forge/config.json` (fallback: `~/.workspace`) under the `ai` key.
+Config is stored in `<active-dir>/config.json` under the `ai` key (run `forge config path` for the active directory).
 
 ---
 

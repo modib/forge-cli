@@ -121,8 +121,19 @@ forge is the workspace infrastructure layer. It does not compete with AI agents 
 
 ## State
 
+Config and cache files live in one of two directories, checked at runtime:
+
+| Directory | When used |
+|-----------|-----------|
+| `~/.forge/` | Created by `forge init` — primary location for new installs |
+| `~/.workspace/` | Automatically used as fallback if `~/.forge/` doesn't exist (e.g., migrated from ws-cli) |
+
+Run `forge config path` to see which one is active on your system.
+
+Once resolved, the active directory contains:
+
 ```
-~/.forge/              # (also checks ~/.workspace for backward compat)
+<active-dir>/
 ├── config.json       # Repos, groups, features, sessions, AI config
 ├── deps.json         # Parsed dependency cache (6 ecosystems)
 ├── cve.json          # OSV.dev vulnerability cache

@@ -139,7 +139,7 @@ Record the start of an agent session.
 - **Args:** `agent` (string, required), `feature_id` (string, optional), `context` (string, optional)
 - **Returns:** `{session_id}`
 
-Creates a session directory at `~/.forge/sessions/<id>/` (fallback: `~/.workspace`) with `meta.json` and `transcript.md`.
+Creates a session directory at `<active-dir>/sessions/<id>/` (run `forge config path` for the active directory) with `meta.json` and `transcript.md`.
 
 ### Context Tools
 

@@ -40,10 +40,17 @@ forge --version
 forge init --provider github
 ```
 
-This creates `~/.forge/config.json` (backward-compatible with `~/.workspace`), checks GitHub auth (via `gh` CLI), and registers your GitHub username.
+This creates workspace config. The config directory is:
+
+- `~/.forge/config.json` — primary (created by `forge init`)
+- `~/.workspace/config.json` — automatic fallback if `~/.forge/` doesn't exist
+
+Run `forge config path` after init to confirm the active path.
+
+Run `forge config path` after init to confirm the active path.
 
 ```
-Initialized workspace at /home/user/.forge
+Initialized workspace at /home/user/.forge    # or ~/.workspace/ if migrating from ws-cli
 Workspace root: /home/user/Workspace
 Providers: github, gitlab
 ```

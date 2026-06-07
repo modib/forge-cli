@@ -26,7 +26,7 @@ forge is organized as three layers:
 | Module | Responsibility |
 |--------|---------------|
 | `cli.py` | Argument parsing, command dispatch, terminal output |
-| `config.py` | Load/save `~/.forge/config.json` (fallback: `~/.workspace`), repo lookup |
+| `config.py` | Load/save active config (see `forge config path`), repo lookup |
 | `engine.py` | Workspace scanning, status aggregation, health checks, diagnostics, PR creation |
 | `git.py` | Git subprocess wrapper (discover, status, clone) |
 | `server.py` | MCP protocol server (24 tools over stdio) |
@@ -40,14 +40,14 @@ forge is organized as three layers:
 
 ```
 forge init
-  → config.py: default_config() → save to ~/.forge/config.json
+  → config.py: default_config() → save to active config (see forge config path)
 
 forge scan
   → config.py: load_config()
   → git.py: discover_repos(~/Workspace) → list of {name, path, url}
   → config.py: repo_by_path() → deduplicate → add_repo()
   → config.py: save_config()
-  → deps.py: parse_repo_deps() for each repo → cache in deps.json
+  → deps.py: parse_repo_deps() for each repo → cache in active-dir/deps.json
 
 forge status
   → config.py: load_config()
@@ -58,7 +58,7 @@ forge status
 forge cve refresh
   → deps.py: list_deps() → all deps across all repos
   → cve.py: _query_osv() for each uncached dep
-  → cve.py: _save_cache() → ~/.forge/cve.json
+  → cve.py: _save_cache() → active-dir/cve.json
 
 forge serve
   → server.py: MCP Server("forge")
@@ -90,19 +90,21 @@ Agent                    forge serve
 
 ## File Locations
 
-```
-~/.forge/                # (also checks ~/.workspace for backward compat)
-├── config.json          # All workspace state (repos, groups, features, sessions, AI config)
-├── deps.json            # Parsed dependency cache (6 ecosystems)
-├── cve.json             # OSV.dev vulnerability cache
-├── sessions/<id>/       # Agent session artifacts
-│   ├── meta.json        # Session metadata
-│   └── transcript.md    # Full transcript (Markdown)
-├── .workspaces/         # Feature worktrees
-│   └── <feature-id>/
-│       └── <repo>/      # git worktree
-└── project-card.json    # Cached forge status --json output
-```
+The active workspace directory depends on which exists at runtime. `forge config path` shows the actual path.
+
+| Path | Purpose | When used |
+|------|---------|-----------|
+| `~/.forge/config.json` | Workspace state (repos, groups, features, sessions, AI config) | Primary — when `~/.forge/` exists |
+| `~/.workspace/config.json` | Same schema | Fallback — used if `~/.forge/` doesn't exist |
+| `~/.forge/deps.json` | Parsed dependency cache | Primary |
+| `~/.workspace/deps.json` | Same | Fallback |
+| `~/.forge/cve.json` | OSV.dev vulnerability cache | Primary |
+| `~/.workspace/cve.json` | Same | Fallback |
+| `~/.forge/sessions/<id>/` | Agent session artifacts | Primary |
+| `~/.workspace/sessions/<id>/` | Same | Fallback |
+| `~/.forge/.workspaces/` | Feature git worktrees | Primary |
+| `~/.workspace/.workspaces/` | Same | Fallback |
+| `~/.workspace/project-card.json` | Cached forge status --json output | Always under `~/.workspace/` |
 
 ---
 

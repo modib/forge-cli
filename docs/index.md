@@ -21,7 +21,7 @@ forge is the cross-project workspace CLI for [Forge OS](https://github.com/modib
 - **Dependency intelligence**: Parse 6 lockfile formats across all repos; `forge cve list` shows known vulnerabilities
 - **CVE scanning**: Query OSV.dev for vulnerabilities in your workspace dependencies
 - **Feature management**: Create feature branches across multiple repos with git worktrees
-- **Config management**: `forge config validate --fix` and `forge config remove-repo` keep your workspace clean
+- **Config management**: `forge config path` shows your active directory (`~/.forge/` or `~/.workspace/`); `forge config validate --fix` and `forge config remove-repo` keep it clean
 - **Shared context**: Notes and decisions that span projects, visible to all AI agents
 - **MCP server**: 24 tools over stdio — Claude Code, Codex, Gemini CLI, and any MCP agent can call them
 - **AI-native**: `forge ai detect` probes hardware, `forge ai setup` installs Ollama or MLX with Gemma 4 models, `forge exec` routes natural language to forge commands
@@ -45,6 +45,7 @@ Then:
 
 ```bash
 forge init --provider github
+forge config path    # shows active config directory (~/.forge/ or ~/.workspace/)
 forge scan
 forge status
 ```
