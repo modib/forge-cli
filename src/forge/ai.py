@@ -402,9 +402,10 @@ def _benchmark_mlx(model=None, prompt="Hello"):
 
 _INTENT_MAP = {
     "status": ["status", "state", "what's going on", "what is going on", "show me", "dirty", "behind", "ahead"],
-    "scan": ["scan", "discover", "find new", "new repos", "vulnerable", "security", "audit"],
+    "scan": ["scan", "discover", "find new", "new repos"],
     "health": ["health", "environment", "check tools", "dev environment"],
     "doctor": ["doctor", "diagnose", "issues", "problems", "what's wrong"],
+    "cve_refresh": ["vulnerable", "vulnerability", "vulnerabilities", "cve", "security", "audit", "find.*vuln"],
     "feature_list": ["features", "feature list", "active features"],
     "log": ["log", "sessions", "history", "recent"],
     "help": ["help", "commands", "what can you do", "usage"],
@@ -415,6 +416,7 @@ _INTENT_COMMANDS = {
     "scan": "forge scan",
     "health": "forge health",
     "doctor": "forge doctor",
+    "cve_refresh": "forge cve refresh && forge cve list",
     "feature_list": "forge feature list",
     "log": "forge log",
     "help": "forge --help",
@@ -427,6 +429,7 @@ Available intents:
 - scan: Discover new repos, check for vulnerable libraries or security issues
 - health: Check dev environment tools (brew, ollama, gh, python)
 - doctor: Diagnose workspace issues (missing repos, stale worktrees)
+- cve_refresh: Find and list vulnerabilities (keywords: CVE, security, vulnerable, audit)
 - feature_list: List active feature branches
 - log: View agent session history
 - help: Show help and available commands

@@ -131,8 +131,12 @@ class TestResolveIntent:
     def test_scan_intent(self):
         assert ai._resolve_intent_keywords("scan for new repos") == "scan"
         assert ai._resolve_intent_keywords("discover repos") == "scan"
-        assert ai._resolve_intent_keywords("vulnerable libraries") == "scan"
-        assert ai._resolve_intent_keywords("security audit") == "scan"
+
+    def test_cve_intent(self):
+        assert ai._resolve_intent_keywords("vulnerable libraries") == "cve_refresh"
+        assert ai._resolve_intent_keywords("security audit") == "cve_refresh"
+        assert ai._resolve_intent_keywords("find vulnerabilities") == "cve_refresh"
+        assert ai._resolve_intent_keywords("show CVEs") == "cve_refresh"
 
     def test_health_intent(self):
         assert ai._resolve_intent_keywords("health check") == "health"
