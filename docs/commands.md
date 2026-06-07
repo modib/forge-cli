@@ -351,14 +351,45 @@ Reports: model, prompt snippet, response length, latency (ms), tokens/sec.
 Execute a natural language workspace command. No flags needed — it just works.
 
 ```bash
-forge exec "show me dirty repos"           # Keyword match → forge status
+forge exec "show dirty repos"              # Keyword match → forge status
 forge exec "scan for new repos"            # Keyword match → forge scan
-forge exec "find vulnerable libraries"     # Keyword match → forge scan
-forge exec --dry-run "show dirty repos"    # Preview intent without executing
+forge exec "find vulnerable libraries"     # Keyword match → forge cve refresh + list
+forge exec "list dependencies"             # Keyword match → forge deps list
+forge exec "create feature refactor-auth"  # → forge feature create (or falls through to LLM)
+forge exec --dry-run "show status"         # Preview intent without executing
 ```
 
+**Keyword intents** (instant, no model needed):
+
+| Intent | Runs | Triggers |
+|--------|------|----------|
+| `status` | `forge status` | dirty, behind, ahead, workspace state |
+| `scan` | `forge scan` | discover repos, find new repos |
+| `init` | `forge init` | init, initialize, first time setup |
+| `clone` | `forge clone` | clone repo, checkout project |
+| `health` | `forge health` | environment, dev environment |
+| `doctor` | `forge doctor` | diagnose, workspace issues |
+| `cve_refresh` | `cve refresh && cve list` | vulnerable, security, cve |
+| `cve_report` | `forge cve report` | security report, risk report |
+| `cve_describe` | `forge cve describe` | cve details, describe cve |
+| `deps_list` | `forge deps list` | dependencies, list deps, what packages |
+| `feature_list` | `forge feature list` | list features, active features |
+| `feature_create` | `forge feature create` | create feature, new feature |
+| `graph` | `forge graph` | knowledge graph, co-change |
+| `pr` | `forge pr create` | create pr, pull request |
+| `share` | `forge share` | share note, save decision |
+| `notes` | `forge notes` | my notes, list notes, shared notes |
+| `install` | `forge install` | install agent, setup claude |
+| `config_validate` | `forge config validate --fix` | validate config, fix config |
+| `log` | `forge log` | sessions, history, recent |
+| `ai_setup` | `forge ai setup` | setup ai, install model, configure ollama |
+| `ai_status` | `forge ai status` | ai ready, check ollama, model status |
+| `help` | `forge --help` | help, commands, what can you do |
+
+Longer, more specific patterns take priority over shorter ones (e.g., "security issues" → `cve_refresh`, not `doctor`).
+
 **Resolution chain** (automatic, transparent):
-1. **Keyword patterns** — instant match for common queries (no model needed)
+1. **Keyword patterns** — instant match for 22 intents (no model needed)
 2. **GitHub Models free tier** — if `gh` is authenticated, tries cloud API (fast, no setup)
 3. **Local model** — Ollama with Gemma 4 (`gemma4:e2b`), auto-pulled on first use
 

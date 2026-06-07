@@ -134,9 +134,31 @@ class TestResolveIntent:
 
     def test_cve_intent(self):
         assert ai._resolve_intent_keywords("vulnerable libraries") == "cve_refresh"
-        assert ai._resolve_intent_keywords("security audit") == "cve_refresh"
         assert ai._resolve_intent_keywords("find vulnerabilities") == "cve_refresh"
+        assert ai._resolve_intent_keywords("security audit") == "cve_refresh"
         assert ai._resolve_intent_keywords("show CVEs") == "cve_refresh"
+
+    def test_cve_report_intent(self):
+        assert ai._resolve_intent_keywords("security report") == "cve_report"
+        assert ai._resolve_intent_keywords("vulnerability summary") == "cve_report"
+
+    def test_cve_describe_intent(self):
+        assert ai._resolve_intent_keywords("cve details") == "cve_describe"
+        assert ai._resolve_intent_keywords("describe cve-2024-1234") == "cve_describe"
+
+    def test_deps_list_intent(self):
+        assert ai._resolve_intent_keywords("list my dependencies") == "deps_list"
+        assert ai._resolve_intent_keywords("show dependencies") == "deps_list"
+        assert ai._resolve_intent_keywords("what packages do I use") == "deps_list"
+
+    def test_init_intent(self):
+        assert ai._resolve_intent_keywords("init") == "init"
+        assert ai._resolve_intent_keywords("initialize workspace") == "init"
+        assert ai._resolve_intent_keywords("first time setup") == "init"
+
+    def test_clone_intent(self):
+        assert ai._resolve_intent_keywords("clone repo") == "clone"
+        assert ai._resolve_intent_keywords("checkout project") == "clone"
 
     def test_health_intent(self):
         assert ai._resolve_intent_keywords("health check") == "health"
@@ -150,9 +172,49 @@ class TestResolveIntent:
         assert ai._resolve_intent_keywords("list features") == "feature_list"
         assert ai._resolve_intent_keywords("show features") == "feature_list"
 
+    def test_feature_create_intent(self):
+        assert ai._resolve_intent_keywords("create feature") == "feature_create"
+        assert ai._resolve_intent_keywords("new feature") == "feature_create"
+
+    def test_graph_intent(self):
+        assert ai._resolve_intent_keywords("knowledge graph") == "graph"
+        assert ai._resolve_intent_keywords("show graph for my-project") == "graph"
+
+    def test_pr_intent(self):
+        assert ai._resolve_intent_keywords("create pr") == "pr"
+        assert ai._resolve_intent_keywords("pull request") == "pr"
+
+    def test_share_intent(self):
+        assert ai._resolve_intent_keywords("share note") == "share"
+        assert ai._resolve_intent_keywords("save decision") == "share"
+
+    def test_notes_intent(self):
+        assert ai._resolve_intent_keywords("show notes") == "notes"
+        assert ai._resolve_intent_keywords("my notes") == "notes"
+        assert ai._resolve_intent_keywords("list shared notes") == "notes"
+
+    def test_install_intent(self):
+        assert ai._resolve_intent_keywords("install agent") == "install"
+        assert ai._resolve_intent_keywords("setup claude") == "install"
+
+    def test_config_validate_intent(self):
+        assert ai._resolve_intent_keywords("validate config") == "config_validate"
+        assert ai._resolve_intent_keywords("fix config") == "config_validate"
+        assert ai._resolve_intent_keywords("repair config") == "config_validate"
+
     def test_log_intent(self):
         assert ai._resolve_intent_keywords("show log") == "log"
         assert ai._resolve_intent_keywords("recent sessions") == "log"
+
+    def test_ai_setup_intent(self):
+        assert ai._resolve_intent_keywords("setup ai") == "ai_setup"
+        assert ai._resolve_intent_keywords("install model") == "ai_setup"
+        assert ai._resolve_intent_keywords("configure ollama") == "ai_setup"
+
+    def test_ai_status_intent(self):
+        assert ai._resolve_intent_keywords("ai ready") == "ai_status"
+        assert ai._resolve_intent_keywords("check ollama") == "ai_status"
+        assert ai._resolve_intent_keywords("is model running") == "ai_status"
 
     def test_help_intent(self):
         assert ai._resolve_intent_keywords("help") == "help"
@@ -161,6 +223,10 @@ class TestResolveIntent:
     def test_unknown_intent(self):
         assert ai._resolve_intent_keywords("do something crazy") is None
         assert ai._resolve_intent_keywords("play music") is None
+
+    def test_longest_pattern_wins(self):
+        assert ai._resolve_intent_keywords("security issues in my projects") == "cve_refresh"
+        assert ai._resolve_intent_keywords("issues with doctor") == "doctor"
 
 
 class TestExecNl:

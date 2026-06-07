@@ -401,37 +401,79 @@ def _benchmark_mlx(model=None, prompt="Hello"):
 
 
 _INTENT_MAP = {
-    "status": ["status", "state", "what's going on", "what is going on", "show me", "dirty", "behind", "ahead"],
-    "scan": ["scan", "discover", "find new", "new repos"],
+    "status": ["workspace state", "repo state", "what's going on", "what is going on", "dirty", "behind", "ahead", "status"],
+    "scan": ["discover repos", "find new repos", "scan"],
+    "init": ["init", "initialize", "first time setup", "setup workspace"],
+    "clone": ["clone repo", "checkout project", "add repo to workspace"],
     "health": ["health", "environment", "check tools", "dev environment"],
-    "doctor": ["doctor", "diagnose", "issues", "problems", "what's wrong"],
-    "cve_refresh": ["vulnerable", "vulnerability", "vulnerabilities", "cve", "security", "audit", "find.*vuln"],
-    "feature_list": ["features", "feature list", "active features"],
+    "doctor": ["doctor", "diagnose", "workspace issues", "doctor issues", "what's wrong"],
+    "cve_refresh": ["find vulnerable", "vulnerabilities", "find cve", "find security", "vulnerable", "security issues", "security audit", "cve issues", "cve"],
+    "cve_report": ["security report", "vulnerability summary", "risk report"],
+    "cve_describe": ["cve details", "describe cve"],
+    "deps_list": ["list dependencies", "show dependencies", "list deps", "dependencies", "what packages"],
+    "feature_list": ["list features", "active features", "show features", "features"],
+    "feature_create": ["create feature", "new feature", "start feature"],
+    "graph": ["knowledge graph", "co-change", "show graph for", "graph"],
+    "pr": ["create pr", "pull request", "open pr", "submit pr"],
+    "share": ["share note", "save decision", "remember"],
+    "notes": ["show notes", "list notes", "shared notes", "my notes", "notes"],
+    "install": ["install agent", "setup claude", "configure codex"],
+    "config_validate": ["validate config", "check config", "fix config", "repair config"],
     "log": ["log", "sessions", "history", "recent"],
+    "ai_setup": ["setup ai", "install model", "configure ollama", "setup ollama"],
+    "ai_status": ["ai ready", "is model running", "check ollama", "ai status", "model status"],
     "help": ["help", "commands", "what can you do", "usage"],
 }
 
 _INTENT_COMMANDS = {
     "status": "forge status",
     "scan": "forge scan",
+    "init": "forge init",
+    "clone": "forge clone",
     "health": "forge health",
     "doctor": "forge doctor",
     "cve_refresh": "forge cve refresh && forge cve list",
+    "cve_report": "forge cve report",
+    "cve_describe": "forge cve describe",
+    "deps_list": "forge deps list",
     "feature_list": "forge feature list",
+    "feature_create": "forge feature create",
+    "graph": "forge graph",
+    "pr": "forge pr create",
+    "share": "forge share",
+    "notes": "forge notes",
+    "install": "forge install",
+    "config_validate": "forge config validate --fix",
     "log": "forge log",
+    "ai_setup": "forge ai setup",
+    "ai_status": "forge ai status",
     "help": "forge --help",
 }
 
 _EXEC_PROMPT = """You are a workspace command router. Given a natural language query, determine which workspace command the user wants.
 
 Available intents:
-- status: Check workspace/repo status (keywords: dirty, behind, ahead, state, what's going on)
-- scan: Discover new repos, check for vulnerable libraries or security issues
+- status: Check workspace/repo status (keywords: dirty, behind, ahead, state)
+- scan: Discover new repos
+- init: Initialize workspace config
+- clone: Clone a repo into workspace
 - health: Check dev environment tools (brew, ollama, gh, python)
 - doctor: Diagnose workspace issues (missing repos, stale worktrees)
-- cve_refresh: Find and list vulnerabilities (keywords: CVE, security, vulnerable, audit)
+- cve_refresh: Find and list vulnerabilities (keywords: CVE, security, vulnerable)
+- cve_report: Generate security vulnerability report
+- cve_describe: Show details for a specific CVE
+- deps_list: List project dependencies
 - feature_list: List active feature branches
+- feature_create: Create a new feature
+- graph: Generate knowledge graph for a repo
+- pr: Create pull requests across repos
+- share: Share a note or decision across projects
+- notes: List shared notes
+- install: Install an AI agent (Claude Code, Codex)
+- config_validate: Validate and repair workspace config
 - log: View agent session history
+- ai_setup: Set up AI backend (Ollama) and pull model
+- ai_status: Check if AI model is ready for inference
 - help: Show help and available commands
 
 Respond with ONLY a JSON object: {{"intent": "<intent_name>", "confidence": 0.95}}
@@ -571,10 +613,14 @@ def _resolve_with_mlx(query, model=None):
 
 def _resolve_intent_keywords(query):
     q = query.lower().strip()
+    candidates = []
     for intent, patterns in _INTENT_MAP.items():
         for p in patterns:
-            if p in q:
-                return intent
+            candidates.append((p, intent))
+    candidates.sort(key=lambda x: -len(x[0]))
+    for p, intent in candidates:
+        if p in q:
+            return intent
     return None
 
 
