@@ -1,4 +1,4 @@
-from ws.git import sanitize_url, _detect_provider, run_git, is_git_repo
+from forge.git import sanitize_url, _detect_provider, run_git, is_git_repo
 
 
 class TestSanitizeUrl:

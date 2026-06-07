@@ -2,9 +2,12 @@ import json
 import os
 from datetime import datetime, timezone
 
-WORKSPACE_DIR = os.path.expanduser("~/.workspace")
+# Primary: ~/.forge/. Fallback: ~/.workspace/ for backward compat.
+_FORGE_DIR = os.path.expanduser(os.environ.get("FORGE_CONFIG_DIR", os.environ.get("WS_CONFIG_DIR", "~/.forge")))
+_WS_FALLBACK = os.path.expanduser("~/.workspace")
+WORKSPACE_DIR = _FORGE_DIR if os.path.exists(_FORGE_DIR) or not os.path.exists(_WS_FALLBACK) else _WS_FALLBACK
 CONFIG_PATH = os.path.join(WORKSPACE_DIR, "config.json")
-WORKSPACE_ROOT = os.path.expanduser("~/Workspace")
+WORKSPACE_ROOT = os.path.expanduser(os.environ.get("FORGE_WORKSPACE_ROOT", os.environ.get("WS_WORKSPACE_ROOT", "~/Workspace")))
 
 
 def ensure_dir(path):

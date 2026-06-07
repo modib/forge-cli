@@ -23,9 +23,9 @@ AGENTS = {
 }
 
 
-def _ws_serve_command():
-    ws_path = shutil.which("ws") or "ws"
-    return [ws_path, "serve"]
+def _forge_serve_command():
+    forge_path = shutil.which("forge") or "forge"
+    return [forge_path, "serve"]
 
 
 def _check_npm():
@@ -65,8 +65,8 @@ def _configure_claude_mcp():
             pass
 
     config.setdefault("mcpServers", {})
-    ws_cmd = _ws_serve_command()
-    config["mcpServers"]["ws"] = {
+    ws_cmd = _forge_serve_command()
+    config["mcpServers"]["forge"] = {
         "command": ws_cmd[0],
         "args": ws_cmd[1:],
     }
@@ -77,7 +77,7 @@ def _configure_claude_mcp():
 
 
 def _configure_codex_env():
-    ws_cmd = _ws_serve_command()
+    ws_cmd = _forge_serve_command()
     servers = json.dumps([{"command": ws_cmd[0], "args": ws_cmd[1]}])
     config_dir = os.path.expanduser("~/.config/codex")
     os.makedirs(config_dir, exist_ok=True)

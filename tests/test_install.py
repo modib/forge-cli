@@ -1,7 +1,7 @@
 import json
 import os
 from unittest.mock import mock_open
-from ws import install
+from forge import install
 
 
 class TestInstallAgent:
@@ -60,10 +60,10 @@ class TestInstallAgent:
 
 
 class TestConfigureMCP:
-    def test_claude_config_has_ws_server(self, mocker, tmp_path):
-        mocker.patch("ws.install._ws_serve_command", return_value=["ws", "serve"])
+    def test_claude_config_has_forge_server(self, mocker, tmp_path):
+        mocker.patch("forge.install._forge_serve_command", return_value=["forge", "serve"])
         fake_config_dir = tmp_path / "claude"
-        mocker.patch("ws.install.AGENTS", {"claude": {
+        mocker.patch("forge.install.AGENTS", {"claude": {
             "name": "Claude Code", "npm_package": "@anthropic-ai/claude-code",
             "binary": "claude", "config_dir": str(fake_config_dir),
             "config_file": "claude_desktop_config.json", "mcp_key": "mcpServers",
@@ -72,13 +72,13 @@ class TestConfigureMCP:
         assert os.path.exists(result_path)
         data = json.loads(open(result_path).read())
         assert "mcpServers" in data
-        assert "ws" in data["mcpServers"]
-        assert data["mcpServers"]["ws"]["command"] == "ws"
+        assert "forge" in data["mcpServers"]
+        assert data["mcpServers"]["forge"]["command"] == "forge"
 
     def test_codex_env_has_servers(self, mocker, tmp_path):
-        mocker.patch("ws.install._ws_serve_command", return_value=["ws", "serve"])
+        mocker.patch("forge.install._forge_serve_command", return_value=["forge", "serve"])
         fake_config_dir = tmp_path / "codex"
-        mocker.patch("ws.install.AGENTS", {"codex": {
+        mocker.patch("forge.install.AGENTS", {"codex": {
             "name": "Codex CLI", "npm_package": "@openai/codex",
             "binary": "codex", "env_var": "CODEX_MCP_SERVERS",
             "config_dir": str(fake_config_dir),
@@ -90,8 +90,8 @@ class TestConfigureMCP:
 
 
 class TestInstallCli:
-    def test_unknown_agent(self, ws_config, captured_print):
-        from ws.cli import cmd_install
+    def test_unknown_agent(self, forge_config, captured_print):
+        from forge.cli import cmd_install
         import argparse
         cmd_install(argparse.Namespace(agent="unknown"))
         output = " ".join(captured_print)

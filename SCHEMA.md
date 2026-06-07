@@ -1,6 +1,6 @@
-# ws Workspace Schema & MCP Tool Reference
+# forge Workspace Schema & MCP Tool Reference
 
-## State Model (`~/.workspace/config.json`)
+## State Model (`~/.forge/config.json`)
 
 ```jsonc
 {
@@ -86,32 +86,32 @@
 
 | Path | Purpose |
 |------|---------|
-| `~/.workspace/config.json` | Workspace state (repos, groups, features, sessions) |
-| `~/.workspace/sessions/<id>/meta.json` | Session metadata |
-| `~/.workspace/sessions/<id>/transcript.md` | Session transcript |
-| `~/.workspace/.workspaces/<feature-id>/<repo>/` | Git worktrees for active feature |
+| `~/.forge/config.json` | Workspace state (repos, groups, features, sessions) |
+| `~/.forge/sessions/<id>/meta.json` | Session metadata |
+| `~/.forge/sessions/<id>/transcript.md` | Session transcript |
+| `~/.forge/worktrees/<feature-id>/<repo>/` | Git worktrees for active feature |
 | `~/.Brewfile` | Homebrew package manifest (brew bundle --global) |
 
 ## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `ws init [--provider github]` | Initialize workspace config + auth |
-| `ws scan` | Discover new git repos in workspace root |
-| `ws status [name] [--json]` | Show workspace/repo status |
-| `ws clone <url> [--name]` | Clone repo into workspace |
-| `ws health` | Check dev environment tools |
-| `ws feature create <name> [--repos a,b]` | Create feature |
-| `ws feature list` | List features |
-| `ws feature worktree <id> [--repo name]` | Manage worktrees |
-| `ws share <content> [--group g] [--label l]` | Share note across projects |
-| `ws notes [group]` | List shared notes |
-| `ws serve` | Start MCP stdio server |
-| `ws config` | Show config file path |
+| `forge init [--provider github]` | Initialize workspace config + auth |
+| `forge scan` | Discover new git repos in workspace root |
+| `forge status [name] [--json]` | Show workspace/repo status |
+| `forge clone <url> [--name]` | Clone repo into workspace |
+| `forge health` | Check dev environment tools |
+| `forge feature create <name> [--repos a,b]` | Create feature |
+| `forge feature list` | List features |
+| `forge feature worktree <id> [--repo name]` | Manage worktrees |
+| `forge share <content> [--group g] [--label l]` | Share note across projects |
+| `forge notes [group]` | List shared notes |
+| `forge serve` | Start MCP stdio server |
+| `forge config` | Show config file path |
 
 ## MCP Tool Schema (13 Tools)
 
-The `ws serve` command starts an MCP server over stdio. Connect any MCP-compatible AI agent (Claude Code, Codex, Gemini CLI).
+The `forge serve` command starts an MCP server over stdio. Connect any MCP-compatible AI agent (Claude Code, Codex, Gemini CLI).
 
 ### Repository Tools
 
@@ -192,12 +192,12 @@ Get shared notes for a group.
 
 ## Integration: graphify
 
-The ws CLI can launch graphify as a subprocess for codebase knowledge graphs:
+The forge CLI can launch graphify as a subprocess for codebase knowledge graphs:
 
 ```bash
 graphify clone https://github.com/user/repo     # graphify's own clone
-ws status --json                                # ws status as JSON
-graphify query "how does auth work?"            # query graph
+forge status --json                              # forge status as JSON
+graphify query "how does auth work?"             # query graph
 ```
 
-Long-term: `ws status --json | graphify extract --stdin` for workspace-wide codebase understanding.
+Long-term: `forge status --json | graphify extract --stdin` for workspace-wide codebase understanding.

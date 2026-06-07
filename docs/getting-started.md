@@ -18,32 +18,32 @@
 
 ```bash
 brew tap modib/forge
-brew install ws-cli
+brew install forge-cli
 ```
 
 **Alternative — pipx** (works on any system, doesn't require Homebrew):
 
 ```bash
-pipx install ws-cli
+pipx install forge-cli
 ```
 
 Verify:
 
 ```bash
-ws --version
-# ws 0.1.0
+forge --version
+# forge 0.1.0
 ```
 
 ## Initialize
 
 ```bash
-ws init --provider github
+forge init --provider github
 ```
 
-This creates `~/.workspace/config.json`, checks GitHub auth (via `gh` CLI), and registers your GitHub username.
+This creates `~/.forge/config.json` (backward-compatible with `~/.workspace`), checks GitHub auth (via `gh` CLI), and registers your GitHub username.
 
 ```
-Initialized workspace at /home/user/.workspace
+Initialized workspace at /home/user/.forge
 Workspace root: /home/user/Workspace
 Providers: github, gitlab
 ```
@@ -51,7 +51,7 @@ Providers: github, gitlab
 ## Discover Repos
 
 ```bash
-ws scan
+forge scan
 ```
 
 This finds all git repositories in `~/Workspace` and registers them.
@@ -68,7 +68,7 @@ Added 8 new repos:
 ## Check Status
 
 ```bash
-ws status
+forge status
 ```
 
 Shows all registered repos with branch, dirty state, and ahead/behind:
@@ -90,7 +90,7 @@ Repos: 12 total
 ## Machine-Readable Output
 
 ```bash
-ws status --json
+forge status --json
 ```
 
 Returns the full status as JSON — useful for scripts, AI agents, and pipeline integration.
@@ -98,7 +98,7 @@ Returns the full status as JSON — useful for scripts, AI agents, and pipeline 
 ## Check Dev Environment
 
 ```bash
-ws health
+forge health
 ```
 
 ```
@@ -118,7 +118,7 @@ Disk: 28.8% used (150.7 GB free of 228.0 GB)
 ## Connect AI Agents
 
 ```bash
-ws serve
+forge serve
 ```
 
 Starts the MCP stdio server with 23 tools. See the [MCP documentation](./mcp.md) for agent setup.

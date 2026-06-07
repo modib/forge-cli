@@ -1,14 +1,14 @@
 [project]
-name = "ws-cli"
-version = "0.3.0"
-description = "Brewix workspace CLI — cross-project workspace management"
+name = "forge-cli"
+version = "0.4.0"
+description = "Forge — local-first AI workspace toolkit for Forge OS"
 requires-python = ">=3.10"
-authors = [{ name = "Brewix" }]
+authors = [{ name = "Forge" }]
 license = { text = "MIT" }
 dependencies = ["mcp>=1.0.0"]
 
 [project.scripts]
-ws = "ws.cli:main"
+forge = "forge.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

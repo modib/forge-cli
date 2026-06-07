@@ -1,6 +1,6 @@
 import json
 import platform
-from ws import ai
+from forge import ai
 
 
 class TestDetectHardware:
@@ -167,67 +167,67 @@ class TestExecNl:
     def test_dry_run(self):
         result = ai.exec_nl("status", dry_run=True)
         assert result["intent"] == "status"
-        assert result["command"] == "ws status"
+        assert result["command"] == "forge status"
         assert result.get("resolved_by") == "keyword"
 
     def test_dry_run_scans(self):
         result = ai.exec_nl("scan", dry_run=True)
         assert result["intent"] == "scan"
-        assert result["command"] == "ws scan"
+        assert result["command"] == "forge scan"
         assert result.get("resolved_by") == "keyword"
 
 
 class TestAiConfig:
-    def test_config_set_and_get(self, ws_config):
+    def test_config_set_and_get(self, forge_config):
         class FakeArgs:
             key = "provider"
             value = "ollama"
         ai.ai_config_cmd(FakeArgs())
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert c["ai"]["provider"] == "ollama"
 
-    def test_config_set_nested(self, ws_config):
+    def test_config_set_nested(self, forge_config):
         class FakeArgs:
             key = "routing.local"
             value = "gemma2:2b"
         ai.ai_config_cmd(FakeArgs())
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert c["ai"]["routing"]["local"] == "gemma2:2b"
 
-    def test_config_unset(self, ws_config):
-        c = ws_config.load_config()
+    def test_config_unset(self, forge_config):
+        c = forge_config.load_config()
         c["ai"] = {"provider": "ollama"}
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         class FakeArgs:
             key = "provider"
             value = None
         ai.ai_config_cmd(FakeArgs())
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert "provider" not in c["ai"]
 
-    def test_config_show(self, ws_config):
-        c = ws_config.load_config()
+    def test_config_show(self, forge_config):
+        c = forge_config.load_config()
         c["ai"] = {"provider": "ollama"}
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         class FakeArgs:
             key = None
             value = None
         ai.ai_config_cmd(FakeArgs())
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert c["ai"]["provider"] == "ollama"
 
-    def test_config_coerce_bool(self, ws_config):
+    def test_config_coerce_bool(self, forge_config):
         class FakeArgs:
             key = "enabled"
             value = "true"
         ai.ai_config_cmd(FakeArgs())
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert c["ai"]["enabled"] is True
 
-    def test_config_coerce_int(self, ws_config):
+    def test_config_coerce_int(self, forge_config):
         class FakeArgs:
             key = "timeout"
             value = "30"
         ai.ai_config_cmd(FakeArgs())
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert c["ai"]["timeout"] == 30

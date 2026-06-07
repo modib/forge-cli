@@ -4,13 +4,13 @@
 
 ---
 
-The `ws serve` command starts an MCP (Model Context Protocol) server over stdio. Any MCP-compatible AI agent — Claude Code, Codex CLI, Gemini CLI, Cursor — can connect and call workspace tools.
+The `forge serve` command starts an MCP (Model Context Protocol) server over stdio. Any MCP-compatible AI agent — Claude Code, Codex CLI, Gemini CLI, Cursor — can connect and call workspace tools.
 
 ## Quick Start
 
 ```bash
 # Terminal 1: Start server
-ws serve
+forge serve
 ```
 
 ### Claude Code Setup
@@ -20,8 +20,8 @@ Add to your project's `.mcp.json` or `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "ws": {
-      "command": "ws",
+    "forge": {
+      "command": "forge",
       "args": ["serve"]
     }
   }
@@ -35,8 +35,8 @@ Add to `.codex/hooks.json` or configure in `~/.codex/config.json`:
 ```json
 {
   "mcpServers": {
-    "ws": {
-      "command": "ws",
+    "forge": {
+      "command": "forge",
       "args": ["serve"]
     }
   }
@@ -132,7 +132,7 @@ Record the start of an agent session.
 - **Args:** `agent` (string, required), `feature_id` (string, optional), `context` (string, optional)
 - **Returns:** `{session_id}`
 
-Creates a session directory at `~/.workspace/sessions/<id>/` with `meta.json` and `transcript.md`.
+Creates a session directory at `~/.forge/sessions/<id>/` (fallback: `~/.workspace`) with `meta.json` and `transcript.md`.
 
 ### Context Tools
 
@@ -197,12 +197,12 @@ Execute a natural language workspace command (keyword → GitHub Models → loca
 ## Testing the MCP Server
 
 ```bash
-printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"0.1.0","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | ws serve
+printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"0.1.0","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}\n{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}\n' | forge serve
 ```
 
 ## Protocol
 
-ws uses the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. The server:
+forge uses the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. The server:
 
 1. Receives `initialize` request
 2. Responds with server capabilities (23 tools)

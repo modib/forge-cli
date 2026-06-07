@@ -28,6 +28,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[test]"
-      - run: ws --version
-      - run: ws config path
+      - run: forge --version
+      - run: forge config path
       - run: pytest -v --tb=short

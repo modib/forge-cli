@@ -1,10 +1,10 @@
-# ws CLI Documentation
+# forge CLI Documentation
 
 **[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
 
 ---
 
-ws is the cross-project workspace CLI for [Forge](https://github.com/forge/forge). It manages git repos in `~/Workspace`, shares context across projects, and exposes all operations as MCP tools for AI agents.
+forge is the cross-project workspace CLI for [Forge](https://github.com/forge/forge). It manages git repos in `~/Workspace`, shares context across projects, and exposes all operations as MCP tools for AI agents.
 
 ## Quick Links
 
@@ -15,13 +15,13 @@ ws is the cross-project workspace CLI for [Forge](https://github.com/forge/forge
 - [Schema](../SCHEMA.md) — State model reference
 - [Roadmap](../ROADMAP.md) — Development plan
 
-## What is ws?
+## What is forge?
 
 - **Cross-project status**: One command shows all your repos — branch, dirty state, ahead/behind
 - **Feature management**: Create feature branches across multiple repos with git worktrees
 - **Shared context**: Notes and decisions that span projects, visible to all AI agents
 - **MCP server**: 23 tools over stdio — Claude Code, Codex, Gemini CLI, and any MCP agent can call them
-- **AI-native**: `ws ai detect` probes hardware, `ws ai setup` installs Ollama or MLX, `ws exec` routes natural language to ws commands
+- **AI-native**: `forge ai detect` probes hardware, `forge ai setup` installs Ollama or MLX, `forge exec` routes natural language to forge commands
 
 ## Install
 
@@ -29,26 +29,26 @@ ws is the cross-project workspace CLI for [Forge](https://github.com/forge/forge
 
 ```bash
 brew tap modib/forge
-brew install ws-cli
+brew install forge-cli
 ```
 
 **Alternative — pipx** (no Homebrew required):
 
 ```bash
-pipx install ws-cli
+pipx install forge-cli
 ```
 
 Then:
 
 ```bash
-ws init --provider github
-ws scan
-ws status
+forge init --provider github
+forge scan
+forge status
 ```
 
 ## Project Status
 
-ws CLI is in active development (v0.3). See the [roadmap](../ROADMAP.md) for what's coming.
+forge CLI is in active development (v0.3). See the [roadmap](../ROADMAP.md) for what's coming.
 
 ---
 

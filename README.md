@@ -1,79 +1,79 @@
-# ws — Cross-Project Workspace CLI
+# forge — Cross-Project Workspace CLI
 
-**ws** is the Forge workspace CLI. It treats `~/Workspace` as a first-class entity: indexes git repos, tracks cross-project health, manages feature worktrees, shares context between projects, and exposes all operations as MCP tools for AI agents.
+**forge** is the Forge workspace CLI. It treats `~/Workspace` as a first-class entity: indexes git repos, tracks cross-project health, manages feature worktrees, shares context between projects, and exposes all operations as MCP tools for AI agents.
 
 ```bash
-brew install modib/forge/ws-cli
-ws init
-ws scan
-ws status
+brew install modib/forge/forge-cli
+forge init
+forge scan
+forge status
 ```
 
 Or via pipx (if you don't use Homebrew):
 
 ```bash
-pipx install ws-cli
+pipx install forge-cli
 ```
 
-## Why ws?
+## Why forge?
 
-AI coding agents (Claude Code, Codex, Cursor) are powerful, but they start blind in every repo. ws gives them — and you — cross-project awareness:
+AI coding agents (Claude Code, Codex, Cursor) are powerful, but they start blind in every repo. forge gives them — and you — cross-project awareness:
 
-- **See everything at once**: `ws status` shows all your repos with branch, dirty state, ahead/behind
-- **Share context across projects**: `ws share "deploy: run migrations first" --group backend` — all agents in that group see it
-- **Feature branches across repos**: `ws feature create "refactor-auth" --repos svc-a,svc-b` — creates git worktrees in one command
-- **MCP for AI agents**: `ws serve` exposes 13 tools over stdio — any MCP-compatible agent calls them directly
+- **See everything at once**: `forge status` shows all your repos with branch, dirty state, ahead/behind
+- **Share context across projects**: `forge share "deploy: run migrations first" --group backend` — all agents in that group see it
+- **Feature branches across repos**: `forge feature create "refactor-auth" --repos svc-a,svc-b` — creates git worktrees in one command
+- **MCP for AI agents**: `forge serve` exposes 13 tools over stdio — any MCP-compatible agent calls them directly
 
 ## Quick Start
 
 ```bash
 # Install (Homebrew — recommended for Forge OS)
 brew tap modib/forge
-brew install ws-cli
+brew install forge-cli
 
 # Or via pipx (works anywhere)
-# pipx install ws-cli
+# pipx install forge-cli
 
 # Initialize
-ws init --provider github
+forge init --provider github
 
 # Discover existing repos
-ws scan
+forge scan
 
 # See workspace status
-ws status
+forge status
 
 # Check dev environment
-ws health
+forge health
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `ws init [--provider github]` | Initialize workspace config + auth |
-| `ws scan` | Discover new git repos in ~/Workspace |
-| `ws status [name] [--json]` | Show workspace/repo status |
-| `ws health` | Check dev environment (brew, ollama, gh, disk) |
-| `ws clone <url> [--name]` | Clone + register in workspace |
-| `ws feature create <name> [--repos a,b]` | Create feature |
-| `ws feature list` | List active features |
-| `ws feature worktree <id> --repo <name>` | Create git worktree for feature |
-| `ws share <content> [--group g]` | Share note across projects |
-| `ws notes [group]` | List shared notes |
-| `ws serve` | Start MCP stdio server |
-| `ws config` | Show config path |
+| `forge init [--provider github]` | Initialize workspace config + auth |
+| `forge scan` | Discover new git repos in ~/Workspace |
+| `forge status [name] [--json]` | Show workspace/repo status |
+| `forge health` | Check dev environment (brew, ollama, gh, disk) |
+| `forge clone <url> [--name]` | Clone + register in workspace |
+| `forge feature create <name> [--repos a,b]` | Create feature |
+| `forge feature list` | List active features |
+| `forge feature worktree <id> --repo <name>` | Create git worktree for feature |
+| `forge share <content> [--group g]` | Share note across projects |
+| `forge notes [group]` | List shared notes |
+| `forge serve` | Start MCP stdio server |
+| `forge config` | Show config path |
 
 ## MCP Server
 
-Any MCP-compatible AI agent connects to ws via stdio:
+Any MCP-compatible AI agent connects to forge via stdio:
 
 ```bash
 # Terminal 1: Start MCP server
-ws serve
+forge serve
 
 # In your AI agent (Claude Code, Codex, etc.):
-#   → ws serves 13 tools:
+#   → forge serves 13 tools:
 #     list_repos, repo_status, workspace_status, workspace_health,
 #     clone_repo, workspace_scan, create_feature, list_features,
 #     log_decision, get_decisions, start_session, share_note,
@@ -84,8 +84,8 @@ ws serve
 ```json
 {
   "mcpServers": {
-    "ws": {
-      "command": "ws",
+    "forge": {
+      "command": "forge",
       "args": ["serve"]
     }
   }
@@ -98,20 +98,20 @@ ws serve
 Agent (Claude Code / Codex)
   │ MCP stdio
   ▼
-ws serve ───→ 13 MCP tools
+forge serve ───→ 13 MCP tools
   │
-ws CLI ─────→ init, status, clone, feature, share
+forge CLI ─────→ init, status, clone, feature, share
   │
   ▼
 subprocess: git, brew, gh, graphify
 ```
 
-ws is the workspace infrastructure layer. It does not compete with AI agents — it gives them workspace superpowers.
+forge is the workspace infrastructure layer. It does not compete with AI agents — it gives them workspace superpowers.
 
 ## State
 
 ```
-~/.workspace/
+~/.forge/              # (also checks ~/.workspace for backward compat)
 ├── config.json       # Repos, groups, features, sessions
 ├── sessions/<id>/    # Agent session artifacts
 │   ├── meta.json
@@ -131,15 +131,15 @@ pipx install graphifyy
 cd ~/Workspace/my-project
 /graphify .
 
-# ws status provides machine-readable input for graphify
-ws status --json | graphify extract --stdin  # (future)
+# forge status provides machine-readable input for graphify
+forge status --json | graphify extract --stdin  # (future)
 ```
 
 ## Contributing
 
 ```bash
-git clone https://github.com/forge/ws-cli
-cd ws-cli
+git clone https://github.com/forge/forge-cli
+cd forge-cli
 pipx install -e .
 ```
 
@@ -147,8 +147,8 @@ See [ROADMAP.md](./ROADMAP.md) for the development plan.
 
 ## Links
 
-- **Docs:** https://modib.github.io/ws-cli/
-- **Repo:** https://github.com/modib/ws-cli
+- **Docs:** https://modib.github.io/forge-cli/
+- **Repo:** https://github.com/modib/forge-cli
 - **Forge Project:** https://github.com/modib/forge
 
 ## License

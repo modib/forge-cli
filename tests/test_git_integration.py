@@ -1,5 +1,5 @@
 import subprocess
-from ws.git import is_git_repo, get_status, discover_repos, run_git
+from forge.git import is_git_repo, get_status, discover_repos, run_git
 
 
 class TestIsGitRepoIntegration:

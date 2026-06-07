@@ -1,52 +1,52 @@
 import os
 import subprocess
-from ws import engine
+from forge import engine
 
 
 class TestInitWorkspace:
-    def test_init_creates_dir(self, ws_config, tmp_workspace):
-        ws_dir, ws_root, _ = tmp_workspace
+    def test_init_creates_dir(self, forge_config, tmp_forge_workspace):
+        forge_dir, workspace_root, _ = tmp_forge_workspace
         engine.init_workspace()
-        assert os.path.exists(str(ws_dir))
-        sessions_dir = os.path.join(str(ws_dir), "sessions")
+        assert os.path.exists(str(forge_dir))
+        sessions_dir = os.path.join(str(forge_dir), "sessions")
         assert os.path.exists(sessions_dir)
 
 
 class TestScan:
-    def test_scan_empty(self, ws_config, tmp_workspace):
-        _, ws_root, _ = tmp_workspace
+    def test_scan_empty(self, forge_config, tmp_forge_workspace):
+        _, workspace_root, _ = tmp_forge_workspace
         added, total = engine.scan_workspace()
         assert added == []
         assert total == 0
 
-    def test_scan_discovers_repo(self, ws_config, tmp_git_repo, tmp_workspace):
-        _, ws_root, _ = tmp_workspace
+    def test_scan_discovers_repo(self, forge_config, tmp_git_repo, tmp_forge_workspace):
+        _, workspace_root, _ = tmp_forge_workspace
         import shutil
-        shutil.move(str(tmp_git_repo), str(ws_root / tmp_git_repo.name))
+        shutil.move(str(tmp_git_repo), str(workspace_root / tmp_git_repo.name))
         added, total = engine.scan_workspace()
         assert total == 1
         assert tmp_git_repo.name in added
 
 
 class TestStatus:
-    def test_get_status_empty(self, ws_config):
+    def test_get_status_empty(self, forge_config):
         results = engine.get_status()
         assert results == []
 
-    def test_get_status_missing_path(self, ws_config, populated_config):
+    def test_get_status_missing_path(self, forge_config, populated_config):
         results = engine.get_status()
         assert len(results) == 2
         for r in results:
             assert r.get("exists") is False
             assert r.get("error") == "path not found"
 
-    def test_get_overall_status(self, ws_config, populated_config):
+    def test_get_overall_status(self, forge_config, populated_config):
         s = engine.get_overall_status()
         assert s["total_repos"] == 2
         assert s["missing"] == 2
         assert "repos" in s
 
-    def test_get_status_by_name(self, ws_config, populated_config):
+    def test_get_status_by_name(self, forge_config, populated_config):
         results = engine.get_status("repo-a")
         assert len(results) == 1
         assert results[0]["name"] == "repo-a"
@@ -75,13 +75,13 @@ class TestHealth:
 
 
 class TestFeatures:
-    def test_add_feature(self, ws_config):
+    def test_add_feature(self, forge_config):
         feat = engine.add_feature("dark-mode", repos=["repo-a", "repo-b"])
         assert feat["name"] == "dark-mode"
         assert feat["repos"] == ["repo-a", "repo-b"]
         assert feat["id"].startswith("feat-")
 
-    def test_list_features(self, ws_config):
+    def test_list_features(self, forge_config):
         engine.add_feature("f1")
         engine.add_feature("f2")
         features = engine.list_features()
@@ -90,107 +90,107 @@ class TestFeatures:
         assert "f1" in names
         assert "f2" in names
 
-    def test_add_feature_saves_to_config(self, ws_config):
+    def test_add_feature_saves_to_config(self, forge_config):
         feat = engine.add_feature("persist-test")
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert any(f["id"] == feat["id"] for f in c["features"])
 
-    def test_complete_feature_by_id(self, ws_config):
+    def test_complete_feature_by_id(self, forge_config):
         feat = engine.add_feature("complete-me")
         result = engine.complete_feature(feat["id"])
         assert "error" not in result
         assert result["name"] == "complete-me"
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert all(f["id"] != feat["id"] for f in c["features"])
 
-    def test_complete_feature_by_name(self, ws_config):
+    def test_complete_feature_by_name(self, forge_config):
         engine.add_feature("by-name")
         result = engine.complete_feature("by-name")
         assert "error" not in result
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         assert all(f["name"] != "by-name" for f in c["features"])
 
-    def test_complete_nonexistent(self, ws_config):
+    def test_complete_nonexistent(self, forge_config):
         result = engine.complete_feature("nonexistent-feature")
         assert "error" in result
 
-    def test_complete_with_worktree(self, ws_config):
+    def test_complete_with_worktree(self, forge_config):
         feat = engine.add_feature("with-wt")
         feat_id = feat["id"]
-        c = ws_config.load_config()
+        c = forge_config.load_config()
         for f in c["features"]:
             if f["id"] == feat_id:
                 f["worktrees"]["repo-a"] = "/nonexistent/worktree"
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.complete_feature(feat_id)
         assert "error" not in result
 
 
 class TestDiagnose:
-    def test_healthy_empty(self, ws_config):
+    def test_healthy_empty(self, forge_config):
         d = engine.diagnose()
         assert d["total_issues"] >= 0
 
-    def test_detects_missing_repo(self, ws_config, populated_config):
+    def test_detects_missing_repo(self, forge_config, populated_config):
         d = engine.diagnose()
         types = [i["type"] for i in d["issues"]]
         assert "missing_repo" in types
 
-    def test_detects_no_remote(self, ws_config, populated_config, tmp_git_repo):
+    def test_detects_no_remote(self, forge_config, populated_config, tmp_git_repo):
         import shutil
-        ws_root = tmp_git_repo.parent.parent / "Workspace"
-        ws_root.mkdir(parents=True, exist_ok=True)
-        dest = ws_root / "noremote"
+        workspace_root = tmp_git_repo.parent.parent / "Workspace"
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        dest = workspace_root / "noremote"
         shutil.copytree(str(tmp_git_repo), str(dest))
-        c = ws_config.load_config()
-        ws_config.add_repo(c, {"name": "noremote", "path": str(dest), "provider": "unknown", "url": "", "default_branch": "main"})
-        ws_config.save_config(c)
+        c = forge_config.load_config()
+        forge_config.add_repo(c, {"name": "noremote", "path": str(dest), "provider": "unknown", "url": "", "default_branch": "main"})
+        forge_config.save_config(c)
         d = engine.diagnose()
         types = [i["type"] for i in d["issues"]]
         assert "no_remote" in types
 
-    def test_detects_stale_worktree(self, ws_config):
-        c = ws_config.load_config()
-        ws_config.add_repo(c, {"name": "repo", "path": "/tmp/repo", "provider": "github", "url": "", "default_branch": "main"})
+    def test_detects_stale_worktree(self, forge_config):
+        c = forge_config.load_config()
+        forge_config.add_repo(c, {"name": "repo", "path": "/tmp/repo", "provider": "github", "url": "", "default_branch": "main"})
         c.setdefault("features", []).append({"id": "feat-1", "name": "stale", "worktrees": {"repo": "/nonexistent/wt"}})
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         d = engine.diagnose()
         types = [i["type"] for i in d["issues"]]
         assert "stale_worktree" in types
 
 
 class TestSessionLog:
-    def test_list_empty(self, ws_config):
+    def test_list_empty(self, forge_config):
         assert engine.list_sessions() == []
 
-    def test_list_recent(self, ws_config):
-        c = ws_config.load_config()
+    def test_list_recent(self, forge_config):
+        c = forge_config.load_config()
         c.setdefault("sessions", []).append({"id": "sess-1", "agent": "test", "started": "2025-01-01T00:00:00", "context": "hello world this is a test"})
         c["sessions"].append({"id": "sess-2", "agent": "test", "started": "2025-01-02T00:00:00", "context": ""})
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.list_sessions(limit=10)
         assert len(result) == 2
         # Most recent first (reversed)
         assert result[0]["id"] == "sess-2"
         assert result[1]["context_preview"] == "hello world this is a test"
 
-    def test_list_limit(self, ws_config):
-        c = ws_config.load_config()
+    def test_list_limit(self, forge_config):
+        c = forge_config.load_config()
         c.setdefault("sessions", [])
         for i in range(5):
             c["sessions"].append({"id": f"sess-{i}", "agent": "test", "started": "", "context": ""})
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.list_sessions(limit=3)
         assert len(result) == 3
 
-    def test_get_session_not_found(self, ws_config):
+    def test_get_session_not_found(self, forge_config):
         result = engine.get_session("no-such")
         assert "error" in result
 
-    def test_get_session_from_config(self, ws_config):
-        c = ws_config.load_config()
+    def test_get_session_from_config(self, forge_config):
+        c = forge_config.load_config()
         c.setdefault("sessions", []).append({"id": "sess-1", "agent": "test", "started": "2025-01-01T00:00:00"})
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.get_session("sess-1")
         assert "error" not in result
         assert result["session"]["id"] == "sess-1"
@@ -198,125 +198,125 @@ class TestSessionLog:
 
 class TestValidateConfig:
     def test_config_not_found(self, tmp_path):
-        import ws.config as cfg
+        import forge.config as cfg
         cfg.CONFIG_PATH = str(tmp_path / "nonexistent.json")
         result = engine.validate_config()
         assert result["valid"] is False
         assert any("not found" in i["detail"] for i in result["issues"])
 
-    def test_valid_empty(self, ws_config):
+    def test_valid_empty(self, forge_config):
         result = engine.validate_config()
         assert result["valid"] is True
 
-    def test_invalid_version(self, ws_config):
-        c = ws_config.load_config()
+    def test_invalid_version(self, forge_config):
+        c = forge_config.load_config()
         c["version"] = 99
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("Unknown config version" in i["detail"] for i in result["issues"])
 
-    def test_missing_workspace_root(self, ws_config):
-        c = ws_config.load_config()
+    def test_missing_workspace_root(self, forge_config):
+        c = forge_config.load_config()
         del c["workspace_root"]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("Missing workspace_root" in i["detail"] for i in result["issues"])
 
-    def test_duplicate_repo_name(self, ws_config):
-        c = ws_config.load_config()
+    def test_duplicate_repo_name(self, forge_config):
+        c = forge_config.load_config()
         c["repos"] = [
             {"name": "dup", "path": "/tmp/a"},
             {"name": "dup", "path": "/tmp/b"},
         ]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("Duplicate repo name" in i["detail"] for i in result["issues"])
 
-    def test_repo_missing_path(self, ws_config):
-        c = ws_config.load_config()
+    def test_repo_missing_path(self, forge_config):
+        c = forge_config.load_config()
         c["repos"] = [{"name": "nopath"}]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("Missing path" in i["detail"] for i in result["issues"])
 
-    def test_repo_path_not_found(self, ws_config):
-        c = ws_config.load_config()
+    def test_repo_path_not_found(self, forge_config):
+        c = forge_config.load_config()
         c["repos"] = [{"name": "test", "path": "/nonexistent/path"}]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("Path not found" in i["detail"] for i in result["issues"])
 
-    def test_feature_refs_missing_repo(self, ws_config):
-        c = ws_config.load_config()
+    def test_feature_refs_missing_repo(self, forge_config):
+        c = forge_config.load_config()
         c["features"] = [{"id": "feat-1", "name": "test", "repos": ["no-such-repo"], "worktrees": {}}]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("References missing repo" in i["detail"] for i in result["issues"])
 
-    def test_stale_worktree(self, ws_config):
-        c = ws_config.load_config()
+    def test_stale_worktree(self, forge_config):
+        c = forge_config.load_config()
         c["features"] = [{"id": "feat-1", "name": "test", "repos": [], "worktrees": {"repo-a": "/nonexistent/wt"}}]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config()
         assert any("Stale worktree" in i["detail"] for i in result["issues"])
 
-    def test_fix_removes_stale_worktree(self, ws_config):
-        c = ws_config.load_config()
+    def test_fix_removes_stale_worktree(self, forge_config):
+        c = forge_config.load_config()
         c["features"] = [{"id": "feat-1", "name": "test", "repos": [], "worktrees": {"repo-a": "/nonexistent/wt"}}]
-        ws_config.save_config(c)
+        forge_config.save_config(c)
         result = engine.validate_config(fix=True)
         assert not any("Stale worktree" in i.get("detail", "") for i in result["issues"])
         assert result.get("_repaired")
 
 
 class TestCreatePrs:
-    def test_feature_not_found(self, ws_config):
+    def test_feature_not_found(self, forge_config):
         result = engine.create_prs("nonexistent")
         assert "error" in result
         assert "not found" in result["error"]
 
-    def test_no_repos_in_feature(self, ws_config):
+    def test_no_repos_in_feature(self, forge_config):
         engine.add_feature("empty-feat")
         result = engine.create_prs("empty-feat")
         assert "error" in result
         assert "No repos" in result["error"]
 
-    def test_repo_not_found(self, ws_config):
+    def test_repo_not_found(self, forge_config):
         engine.add_feature("my-feat", repos=["no-such-repo"])
         result = engine.create_prs("my-feat")
         assert "prs" in result
         assert result["prs"][0].get("error") == "Repo not found in workspace config"
 
-    def test_repo_path_not_found(self, ws_config, populated_config):
+    def test_repo_path_not_found(self, forge_config, populated_config):
         engine.add_feature("my-feat", repos=["repo-a"])
         result = engine.create_prs("my-feat")
         assert result["prs"][0].get("error") == "Repo path not found"
 
-    def test_gh_not_installed(self, ws_config, mocker):
+    def test_gh_not_installed(self, forge_config, mocker):
         mocker.patch("shutil.which", return_value=None)
         engine.add_feature("my-feat", repos=["repo-a"])
         result = engine.create_prs("my-feat")
         assert "error" in result
         assert "gh) not found" in result["error"]
 
-    def test_branch_not_found(self, ws_config, tmp_git_repo):
-        ws_root = tmp_git_repo.parent.parent / "Workspace"
-        ws_root.mkdir(parents=True, exist_ok=True)
-        c = ws_config.load_config()
-        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
-        ws_config.save_config(c)
+    def test_branch_not_found(self, forge_config, tmp_git_repo):
+        workspace_root = tmp_git_repo.parent.parent / "Workspace"
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        c = forge_config.load_config()
+        forge_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        forge_config.save_config(c)
         engine.add_feature("my-feat", repos=["my-repo"])
         result = engine.create_prs("my-feat")
         assert result["prs"][0].get("error", "").startswith("Branch 'feature/my-feat' not found")
 
-    def test_create_pr_success(self, ws_config, tmp_git_repo, mocker):
+    def test_create_pr_success(self, forge_config, tmp_git_repo, mocker):
         # Create a feature branch in the git repo
         subprocess.run(["git", "checkout", "-b", "feature/my-feat"], cwd=tmp_git_repo, capture_output=True, check=True)
-        ws_root = tmp_git_repo.parent.parent / "Workspace"
-        ws_root.mkdir(parents=True, exist_ok=True)
-        c = ws_config.load_config()
-        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
-        ws_config.save_config(c)
+        workspace_root = tmp_git_repo.parent.parent / "Workspace"
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        c = forge_config.load_config()
+        forge_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        forge_config.save_config(c)
         engine.add_feature("my-feat", repos=["my-repo"])
         mocker.patch("shutil.which", return_value="/usr/bin/gh")
         mock_run = mocker.patch("subprocess.run")
@@ -326,13 +326,13 @@ class TestCreatePrs:
         assert result["prs"][0]["status"] == "created"
         assert result["prs"][0]["url"] == "https://github.com/test/my-repo/pull/1"
 
-    def test_create_pr_draft(self, ws_config, tmp_git_repo, mocker):
+    def test_create_pr_draft(self, forge_config, tmp_git_repo, mocker):
         subprocess.run(["git", "checkout", "-b", "feature/draft-feat"], cwd=tmp_git_repo, capture_output=True, check=True)
-        ws_root = tmp_git_repo.parent.parent / "Workspace"
-        ws_root.mkdir(parents=True, exist_ok=True)
-        c = ws_config.load_config()
-        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
-        ws_config.save_config(c)
+        workspace_root = tmp_git_repo.parent.parent / "Workspace"
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        c = forge_config.load_config()
+        forge_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        forge_config.save_config(c)
         engine.add_feature("draft-feat", repos=["my-repo"])
         mocker.patch("shutil.which", return_value="/usr/bin/gh")
         mock_run = mocker.patch("subprocess.run")
@@ -345,8 +345,8 @@ class TestCreatePrs:
         assert len(gh_create_calls) == 1
         assert "--draft" in gh_create_calls[0][0][0]
 
-    def test_cross_reference_multi_repo(self, ws_config, tmp_path, mocker):
-        import ws.config as cfg
+    def test_cross_reference_multi_repo(self, forge_config, tmp_path, mocker):
+        import forge.config as cfg
         # Create two repos
         repo_a = tmp_path / "repo-a"
         repo_b = tmp_path / "repo-b"
@@ -359,9 +359,9 @@ class TestCreatePrs:
             subprocess.run(["git", "add", "."], cwd=rp, capture_output=True, check=True)
             subprocess.run(["git", "commit", "-m", "init"], cwd=rp, capture_output=True, check=True)
             subprocess.run(["git", "checkout", "-b", "feature/cross"], cwd=rp, capture_output=True, check=True)
-        ws_root = tmp_path / "Workspace"
-        ws_root.mkdir(parents=True, exist_ok=True)
-        c = ws_config.load_config()
+        workspace_root = tmp_path / "Workspace"
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        c = forge_config.load_config()
         cfg.add_repo(c, {"name": "repo-a", "path": str(repo_a), "provider": "github", "url": "https://github.com/test/repo-a.git", "default_branch": "main"})
         cfg.add_repo(c, {"name": "repo-b", "path": str(repo_b), "provider": "github", "url": "https://github.com/test/repo-b.git", "default_branch": "main"})
         cfg.save_config(c)
@@ -398,13 +398,13 @@ class TestCreatePrs:
         assert "Related PRs" in body_b_text
         assert "repo-a" in body_b_text
 
-    def test_create_pr_custom_body(self, ws_config, tmp_git_repo, mocker):
+    def test_create_pr_custom_body(self, forge_config, tmp_git_repo, mocker):
         subprocess.run(["git", "checkout", "-b", "feature/custom"], cwd=tmp_git_repo, capture_output=True, check=True)
-        ws_root = tmp_git_repo.parent.parent / "Workspace"
-        ws_root.mkdir(parents=True, exist_ok=True)
-        c = ws_config.load_config()
-        ws_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
-        ws_config.save_config(c)
+        workspace_root = tmp_git_repo.parent.parent / "Workspace"
+        workspace_root.mkdir(parents=True, exist_ok=True)
+        c = forge_config.load_config()
+        forge_config.add_repo(c, {"name": "my-repo", "path": str(tmp_git_repo), "provider": "github", "url": "https://github.com/test/my-repo.git", "default_branch": "main"})
+        forge_config.save_config(c)
         engine.add_feature("custom", repos=["my-repo"])
         mocker.patch("shutil.which", return_value="/usr/bin/gh")
         mock_run = mocker.patch("subprocess.run")

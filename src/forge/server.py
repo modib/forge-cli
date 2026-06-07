@@ -10,7 +10,7 @@ from . import graph as wsgraph
 from . import ai as wsai
 from .cli import _completion_script
 
-app = Server("ws")
+app = Server("forge")
 
 
 @app.list_tools()

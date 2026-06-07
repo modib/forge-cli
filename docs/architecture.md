@@ -6,18 +6,18 @@
 
 ## Overview
 
-ws is organized as three layers:
+forge is organized as three layers:
 
 ```
 ┌─────────────────────────────────────────────┐
 │                 CLI Layer                     │
-│  argparse-based interface (ws init, status)  │
+│  argparse-based interface (forge init, status)  │
 ├─────────────────────────────────────────────┤
 │               Engine Layer                    │
 │  State management, git ops, health checks    │
 ├─────────────────────────────────────────────┤
 │              Integration Layer                │
-│  MCP server (ws serve), graphify, subprocess │
+│  MCP server (forge serve), graphify, subprocess │
 └─────────────────────────────────────────────┘
 ```
 
@@ -26,7 +26,7 @@ ws is organized as three layers:
 | Module | Responsibility |
 |--------|---------------|
 | `cli.py` | Argument parsing, command dispatch, terminal output |
-| `config.py` | Load/save `~/.workspace/config.json`, repo lookup |
+| `config.py` | Load/save `~/.forge/config.json` (fallback: `~/.workspace`), repo lookup |
 | `engine.py` | Workspace scanning, status aggregation, health checks |
 | `git.py` | Git subprocess wrapper (discover, status, clone) |
 | `server.py` | MCP protocol server (23 tools over stdio) |
@@ -34,23 +34,23 @@ ws is organized as three layers:
 ## State Flow
 
 ```
-ws init
-  → config.py: default_config() → save to ~/.workspace/config.json
+forge init
+  → config.py: default_config() → save to ~/.forge/config.json
 
-ws scan
+forge scan
   → config.py: load_config()
   → git.py: discover_repos(~/Workspace) → list of {name, path, url}
   → config.py: repo_by_path() → deduplicate → add_repo()
   → config.py: save_config()
 
-ws status
+forge status
   → config.py: load_config()
   → git.py: for each repo, get_status() → {branch, dirty, ahead/behind}
   → engine.py: get_overall_status() → aggregate + format
   → cli.py: terminal output or JSON
 
-ws serve
-  → server.py: MCP Server("ws")
+forge serve
+  → server.py: MCP Server("forge")
   → stdio_server() → await JSON-RPC messages
   → list_tools() → return 23 tool definitions
   → call_tool(name, args) → dispatch to engine/config/git
@@ -60,7 +60,7 @@ ws serve
 ## MCP Integration
 
 ```
-Agent                    ws serve
+Agent                    forge serve
   │                        │
   │── initialize ─────────→│
   │←────── result ────────│
@@ -80,7 +80,7 @@ Agent                    ws serve
 ## File Locations
 
 ```
-~/.workspace/
+~/.forge/                # (also checks ~/.workspace for backward compat)
 ├── config.json          # All workspace state (repos, groups, features, sessions)
 ├── sessions/<id>/       # Agent session artifacts
 │   ├── meta.json        # Session metadata
@@ -88,7 +88,7 @@ Agent                    ws serve
 ├── .workspaces/         # Feature worktrees
 │   └── <feature-id>/
 │       └── <repo>/      # git worktree
-└── project-card.json    # Cached ws status --json output
+└── project-card.json    # Cached forge status --json output
 ```
 
 ---

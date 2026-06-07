@@ -31,14 +31,14 @@ jobs:
         working-directory: /tmp/homebrew-forge
         run: |
           VERSION=${TAG#v}
-          sed -i "s|archive/refs/tags/v[0-9.]*\.tar\.gz|archive/refs/tags/$TAG.tar.gz|" Formula/ws-cli.rb
-          sed -i "s/sha256 \".*\"/sha256 \"$SHA256\"/" Formula/ws-cli.rb
+          sed -i "s|archive/refs/tags/v[0-9.]*\.tar\.gz|archive/refs/tags/$TAG.tar.gz|" Formula/forge-cli.rb
+          sed -i "s/sha256 \".*\"/sha256 \"$SHA256\"/" Formula/forge-cli.rb
 
       - name: Commit and push
         working-directory: /tmp/homebrew-forge
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add Formula/ws-cli.rb
-          git commit -m "ws-cli: bump to $TAG"
+          git add Formula/forge-cli.rb
+          git commit -m "forge-cli: bump to $TAG"
           git push

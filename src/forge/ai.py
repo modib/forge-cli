@@ -339,7 +339,7 @@ def benchmark_model(model=None, prompt="Hello", backend=None):
 
 def _benchmark_ollama(model=None, prompt="Hello"):
     if not check_ollama():
-        return {"error": "Ollama not installed. Run 'ws ai setup' first."}
+        return {"error": "Ollama not installed. Run 'forge ai setup' first."}
     if not model:
         model = "phi-4-mini:3.8b"
     import time
@@ -370,7 +370,7 @@ def _benchmark_ollama(model=None, prompt="Hello"):
 
 def _benchmark_mlx(model=None, prompt="Hello"):
     if not _check_mlx_available():
-        return {"error": "MLX not installed. Run 'ws ai setup --backend mlx' first."}
+        return {"error": "MLX not installed. Run 'forge ai setup --backend mlx' first."}
     if not model:
         model = "Qwen2.5-Coder-1.5B-Instruct"
     if not _is_apple_silicon():
@@ -408,13 +408,13 @@ _INTENT_MAP = {
 }
 
 _INTENT_COMMANDS = {
-    "status": "ws status",
-    "scan": "ws scan",
-    "health": "ws health",
-    "doctor": "ws doctor",
-    "feature_list": "ws feature list",
-    "log": "ws log",
-    "help": "ws --help",
+    "status": "forge status",
+    "scan": "forge scan",
+    "health": "forge health",
+    "doctor": "forge doctor",
+    "feature_list": "forge feature list",
+    "log": "forge log",
+    "help": "forge --help",
 }
 
 _EXEC_PROMPT = """You are a workspace command router. Given a natural language query, determine which workspace command the user wants.
@@ -455,10 +455,10 @@ def check_model_ready(backend=None, model=None):
         if not profile.get("apple_silicon"):
             return {"ready": False, "error": "MLX requires Apple Silicon"}
         if not _check_mlx_available():
-            return {"ready": False, "error": "MLX not installed. Run 'ws ai setup --backend mlx'"}
+            return {"ready": False, "error": "MLX not installed. Run 'forge ai setup --backend mlx'"}
         return {"ready": True, "backend": "mlx", "model": model or suggest_model(profile, "mlx")}
     if not check_ollama():
-        return {"ready": False, "error": "Ollama not installed. Run 'ws ai setup'"}
+        return {"ready": False, "error": "Ollama not installed. Run 'forge ai setup'"}
     suggested = model or suggest_model(profile, "ollama")
     try:
         out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
@@ -611,4 +611,4 @@ def exec_nl(query, dry_run=False):
         intent = _resolve_with_ollama(query, model)
     if intent:
         return _run_command(intent, dry_run, resolved_by=f"local model ({backend})")
-    return {"error": "I couldn't understand that query. Try something like 'show me dirty repos' or 'ws status'."}
+    return {"error": "I couldn't understand that query. Try something like 'show me dirty repos' or 'forge status'."}

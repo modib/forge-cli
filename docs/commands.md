@@ -13,36 +13,36 @@
 
 ## Commands
 
-### `ws init`
+### `forge init`
 
 Initialize workspace config and provider auth.
 
 ```bash
-ws init [--provider github|gitlab]
+forge init [--provider github|gitlab]
 ```
 
-Creates `~/.workspace/config.json` with provider settings. With `--provider github`, checks `gh auth status` and auto-detects GitHub username.
+Creates `~/.forge/config.json` (fallback: `~/.workspace`) with provider settings. With `--provider github`, checks `gh auth status` and auto-detects GitHub username.
 
 ---
 
-### `ws scan`
+### `forge scan`
 
 Discover new git repositories in workspace root.
 
 ```bash
-ws scan
+forge scan
 ```
 
 Scans `~/Workspace` for directories containing `.git`, registers any new ones in config. Skips already-registered repos.
 
 ---
 
-### `ws status`
+### `forge status`
 
 Show workspace or repository status.
 
 ```bash
-ws status [name] [--json]
+forge status [name] [--json]
 ```
 
 Without `name`, shows all registered repos with:
@@ -57,189 +57,189 @@ With `--json`, outputs machine-readable JSON (includes all fields for all repos)
 
 ---
 
-### `ws health`
+### `forge health`
 
 Check dev environment health.
 
 ```bash
-ws health
+forge health
 ```
 
 Checks for: `brew`, `ollama`, `gh`, `python3`, `node`, `npm`, `gh auth`, disk space usage.
 
 ---
 
-### `ws clone`
+### `forge clone`
 
 Clone a repository and register it in workspace.
 
 ```bash
-ws clone <url> [--name <name>]
+forge clone <url> [--name <name>]
 ```
 
 Clones into `~/Workspace/<name>`. Auto-detects name from URL if `--name` is omitted.
 
 ---
 
-### `ws feature`
+### `forge feature`
 
 Manage feature branches across one or more repos.
 
 ```bash
-ws feature create <name> [--repos <a,b,c>]
-ws feature list
-ws feature worktree <id> [--repo <name>]
+forge feature create <name> [--repos <a,b,c>]
+forge feature list
+forge feature worktree <id> [--repo <name>]
 ```
 
 **`create`**: Creates a new feature with optional repo list. Generates a unique feature ID (`feat-<hex>`).
 
 **`list`**: Lists all active features and their worktree count.
 
-**`worktree`**: Creates a git worktree for a repo in the feature. Without `--repo`, lists repos in the feature. Worktrees go in `~/.workspace/.workspaces/<feature-id>/<repo>/`.
+**`worktree`**: Creates a git worktree for a repo in the feature. Without `--repo`, lists repos in the feature. Worktrees go in `~/.forge/.workspaces/<feature-id>/<repo>/` (fallback: `~/.workspace`).
 
 ---
 
-### `ws share`
+### `forge share`
 
 Share a note across projects in a group.
 
 ```bash
-ws share <content> [--group <name>] [--label <label>]
+forge share <content> [--group <name>] [--label <label>]
 ```
 
-Notes are stored in `~/.workspace/config.json` under `groups[].notes`. Any agent or user in the group can read them.
+Notes are stored in `~/.forge/config.json` (fallback: `~/.workspace`) under `groups[].notes`. Any agent or user in the group can read them.
 
 ---
 
-### `ws notes`
+### `forge notes`
 
 List shared notes for a group.
 
 ```bash
-ws notes [group]
+forge notes [group]
 ```
 
 Default group is `"default"`. Shows timestamp, label, and content for each note.
 
 ---
 
-### `ws serve`
+### `forge serve`
 
 Start the MCP stdio server.
 
 ```bash
-ws serve
+forge serve
 ```
 
 Exposes 13 tools over stdio for MCP-compatible AI agents. See [MCP server docs](./mcp.md).
 
 ---
 
-### `ws config`
+### `forge config`
 
 Show config file path or validate workspace config.
 
 ```bash
-ws config
-ws config validate [--fix]
+forge config
+forge config validate [--fix]
 ```
 
-Prints the absolute path to `~/.workspace/config.json`. With `validate`, checks for issues like missing repos, stale worktrees, and duplicate entries; `--fix` removes stale worktrees.
+Prints the absolute path to `~/.forge/config.json` (fallback: `~/.workspace`). With `validate`, checks for issues like missing repos, stale worktrees, and duplicate entries; `--fix` removes stale worktrees.
 
 ---
 
-### `ws completion`
+### `forge completion`
 
 Generate shell completion script for bash, zsh, or fish.
 
 ```bash
-ws completion bash   # → source this in your .bashrc
-ws completion zsh    # → place in a compdef directory
-ws completion fish   # → source this in config.fish
+forge completion bash   # → source this in your .bashrc
+forge completion zsh    # → place in a compdef directory
+forge completion fish   # → source this in config.fish
 ```
 
 ---
 
-### `ws ai detect`
+### `forge ai detect`
 
 Probe hardware and suggest AI backend + model.
 
 ```bash
-ws ai detect                     # Text output
-ws ai detect --json              # Machine-readable JSON
-ws ai detect --backend mlx       # Show suggestion for MLX backend
+forge ai detect                     # Text output
+forge ai detect --json              # Machine-readable JSON
+forge ai detect --backend mlx       # Show suggestion for MLX backend
 ```
 
 Detects: CPU model/cores, RAM total/available, NVIDIA/AMD/Apple GPU, disk space, Apple Silicon, MLX availability. Recommends a backend (`ollama` for Intel/Linux, `mlx` for Apple Silicon) and a model size.
 
 ---
 
-### `ws ai setup`
+### `forge ai setup`
 
 Install AI backend and pull a model.
 
 ```bash
-ws ai setup                           # Auto-detect backend
-ws ai setup --backend ollama          # Install Ollama + model
-ws ai setup --backend mlx             # Install MLX + mlx-lm (Apple Silicon only)
-ws ai setup --model qwen2.5-coder:7b  # Specify model
+forge ai setup                           # Auto-detect backend
+forge ai setup --backend ollama          # Install Ollama + model
+forge ai setup --backend mlx             # Install MLX + mlx-lm (Apple Silicon only)
+forge ai setup --model qwen2.5-coder:7b  # Specify model
 ```
 
 On Intel/Linux: installs Ollama, pulls a Gemma model (e.g. `gemma2:2b` for 8GB RAM, `gemma3:7b` for 16GB+). On Apple Silicon: installs `mlx` + `mlx-lm` via pip, suggests a Qwen2.5-Coder model from mlx-community.
 
 ---
 
-### `ws ai status`
+### `forge ai status`
 
 Check whether the AI model backend is ready for inference.
 
 ```bash
-ws ai status                          # Auto-detect backend
-ws ai status --backend ollama         # Check Ollama readiness
-ws ai status --backend mlx            # Check MLX readiness (Apple Silicon only)
+forge ai status                          # Auto-detect backend
+forge ai status --backend ollama         # Check Ollama readiness
+forge ai status --backend mlx            # Check MLX readiness (Apple Silicon only)
 ```
 
 Returns: ✓ ready or ✗ not ready with guidance on next steps.
 
 ---
 
-### `ws ai config`
+### `forge ai config`
 
 View or modify AI routing configuration.
 
 ```bash
-ws ai config                          # Show all AI config
-ws ai config backend ollama           # Set backend
-ws ai config routing.local "phi-4-mini:3.8b"  # Set model for local routing
-ws ai config provider                 # Unset/remove a key
+forge ai config                          # Show all AI config
+forge ai config backend ollama           # Set backend
+forge ai config routing.local "phi-4-mini:3.8b"  # Set model for local routing
+forge ai config provider                 # Unset/remove a key
 ```
 
-Config is stored in `~/.workspace/config.json` under the `ai` key.
+Config is stored in `~/.forge/config.json` (fallback: `~/.workspace`) under the `ai` key.
 
 ---
 
-### `ws ai benchmark`
+### `forge ai benchmark`
 
 Run an inference speed test.
 
 ```bash
-ws ai benchmark                           # Default model + backend
-ws ai benchmark --backend mlx             # Test MLX backend
-ws ai benchmark --model qwen2.5-coder:7b --prompt "Write a function"
+forge ai benchmark                           # Default model + backend
+forge ai benchmark --backend mlx             # Test MLX backend
+forge ai benchmark --model qwen2.5-coder:7b --prompt "Write a function"
 ```
 
 Reports: model, prompt snippet, response length, latency (ms), tokens/sec.
 
 ---
 
-### `ws exec`
+### `forge exec`
 
 Execute a natural language workspace command. No flags needed — it just works.
 
 ```bash
-ws exec "show me dirty repos"           # Keyword match → ws status
-ws exec "scan for new repos"            # Keyword match → ws scan
-ws exec "find vulnerable libraries"     # Keyword match → ws scan
+forge exec "show me dirty repos"           # Keyword match → forge status
+forge exec "scan for new repos"            # Keyword match → forge scan
+forge exec "find vulnerable libraries"     # Keyword match → forge scan
 ```
 
 **Resolution chain** (automatic, transparent):
@@ -247,11 +247,11 @@ ws exec "find vulnerable libraries"     # Keyword match → ws scan
 2. **GitHub Models free tier** — if `gh` is authenticated, tries cloud API (fast, no setup)
 3. **Local model** — Ollama with Gemma (`gemma2:2b`), auto-pulled on first use, shows progress:
    ```
-   ws: downloading gemma2:2b (this may take a minute)...
-   ws: model ready
+    forge: downloading gemma2:2b (this may take a minute)...
+    forge: model ready
    ```
 
-Each step shows a brief note on stderr: `ws: resolved by GitHub Models` or `ws: resolved by local model (ollama)`. If no resolver succeeds, you'll get a helpful message with an example.
+Each step shows a brief note on stderr: `forge: resolved by GitHub Models` or `forge: resolved by local model (ollama)`. If no resolver succeeds, you'll get a helpful message with an example.
 
 ---
 

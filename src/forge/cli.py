@@ -8,6 +8,7 @@ from . import git
 from . import graph as wsgraph
 from . import install as wsinstall
 from . import ai as wsai
+from . import deps as forge_deps
 
 
 def cmd_init(args):
@@ -26,6 +27,12 @@ def cmd_scan(args):
             print(f"  + {name}")
     else:
         print("No new repos found (all already registered)")
+    c = cfg.load_config()
+    total_deps = 0
+    for repo in c.get("repos", []):
+        deps = forge_deps.update_deps_for_repo(repo["name"], repo["path"])
+        total_deps += len(deps)
+    print(f"Parsed {total_deps} dependencies across {total} repos")
 
 
 def cmd_status(args):
@@ -183,7 +190,7 @@ def cmd_feature(args):
         print(f"Created feature: {feat['id']}")
         print(f"  Name: {feat['name']}")
         print(f"  Repos: {', '.join(feat['repos']) if feat['repos'] else '(none yet)'}")
-        print(f"  Use: ws feature worktree {feat['id']} <repo>")
+        print(f"  Use: forge feature worktree {feat['id']} <repo>")
     elif action == "list":
         features = engine.list_features()
         if not features:
@@ -396,7 +403,7 @@ def cmd_completion(args):
 
 def _completion_script(shell):
     if shell == "bash":
-        return '''_ws_completions() {
+        return '''_forge_completions() {
     local cur prev words cword
     _init_completion || return
 
@@ -418,7 +425,7 @@ def _completion_script(shell):
             COMPREPLY=($(compgen -W "--provider" -- "$cur"))
             ;;
         status)
-            COMPREPLY=($(compgen -W "--json --graph $(ws config path 2>/dev/null && ws status 2>/dev/null | grep -oP '^  \\K\\w+' || true)" -- "$cur"))
+            COMPREPLY=($(compgen -W "--json --graph $(forge config path 2>/dev/null && forge status 2>/dev/null | grep -oP '^  \\K\\w+' || true)" -- "$cur"))
             ;;
         clone)
             COMPREPLY=($(compgen -W "--name" -- "$cur"))
@@ -432,11 +439,11 @@ def _completion_script(shell):
             elif [[ $cword -ge 3 && ${words[2]} == "create" ]]; then
                 COMPREPLY=($(compgen -W "--repos" -- "$cur"))
             elif [[ $cword -ge 3 && ${words[2]} == "worktree" ]]; then
-                COMPREPLY=($(compgen -W "--repo $(ws config path 2>/dev/null && ws feature list 2>/dev/null | grep -oP '^  \\K\\w+' || true)" -- "$cur"))
+                COMPREPLY=($(compgen -W "--repo $(forge config path 2>/dev/null && forge feature list 2>/dev/null | grep -oP '^  \\K\\w+' || true)" -- "$cur"))
             fi
             ;;
         graph)
-            COMPREPLY=($(compgen -W "--type --format --depth $(ws config path 2>/dev/null && ws status 2>/dev/null | grep -oP '^  \\K\\w+' || true)" -- "$cur"))
+            COMPREPLY=($(compgen -W "--type --format --depth $(forge config path 2>/dev/null && forge status 2>/dev/null | grep -oP '^  \\K\\w+' || true)" -- "$cur"))
             if [[ "$prev" == "--type" ]]; then
                 COMPREPLY=($(compgen -W "$graph_types" -- "$cur"))
             elif [[ "$prev" == "--format" ]]; then
@@ -470,10 +477,10 @@ def _completion_script(shell):
             ;;
     esac
 } &&
-complete -F _ws_completions ws
+complete -F _forge_completions forge
 '''
     elif shell == "zsh":
-        return '''#compdef ws
+        return '''#compdef forge
 
 _ws() {
     local line state
@@ -510,7 +517,7 @@ _ws() {
                     ;;
                 status)
                     _arguments "--json[Output as JSON]" "--graph[Show cross-repo impact]"
-                    _ws_repos
+                    _forge_repos
                     ;;
                 clone)
                     _arguments "--name[Override repo name]:"
@@ -520,12 +527,12 @@ _ws() {
                     ;;
                 feature)
                     _arguments "1:action:(create list worktree done)" \\
-                        "2: :_ws_features" \\
+                        "2: :_forge_features" \\
                         "--repos[Comma-separated repo names]:" \\
                         "--repo[Repo name for worktree]:"
                     ;;
                 graph)
-                    _arguments "1: :_ws_repos" \\
+                    _arguments "1: :_forge_repos" \\
                         "--type[Graph type]:(co-change branches)" \\
                         "--format[Output format]:(json text)" \\
                         "--depth[Commits to analyze]:"
@@ -538,7 +545,7 @@ _ws() {
                     ;;
                 pr)
                     _arguments "1:action:(create)" \\
-                        "2: :_ws_features" \\
+                        "2: :_forge_features" \\
                         "--title[PR title]:" \\
                         "--body[PR body]:" \\
                         "--draft[Create as draft PR]"
@@ -557,18 +564,18 @@ _ws() {
     esac
 }
 
-_ws_repos() {
+_forge_repos() {
     local -a repos
     if [[ -f ~/.workspace/config.json ]]; then
-        repos=(${(f)"$(command ws status --json 2>/dev/null | command python3 -c \"import sys,json; d=json.load(sys.stdin); [print(r['name']) for r in d.get('repos',[])]\" 2>/dev/null)"})
+        repos=(${(f)"$(command forge status --json 2>/dev/null | command python3 -c \"import sys,json; d=json.load(sys.stdin); [print(r['name']) for r in d.get('repos',[])]\" 2>/dev/null)"})
     fi
     _values 'repos' $repos
 }
 
-_ws_features() {
+_forge_features() {
     local -a features
     if [[ -f ~/.workspace/config.json ]]; then
-        features=(${(f)"$(command ws config path 2>/dev/null && command ws feature list 2>/dev/null | command grep -oP '^  \\K\\w+' 2>/dev/null || true)"})
+        features=(${(f)"$(command forge config path 2>/dev/null && command forge feature list 2>/dev/null | command grep -oP '^  \\K\\w+' 2>/dev/null || true)"})
     fi
     _values 'features' $features
 }
@@ -576,76 +583,76 @@ _ws_features() {
 _ws "$@"
 '''
     elif shell == "fish":
-        return '''function _ws_completions
+        return '''function _forge_completions
     set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config completion
 
     # Top-level commands
-    complete -c ws -f
+    complete -c forge -f
     for cmd in $cmds
-        complete -c ws -n "not __fish_seen_subcommand_from $cmds" -a $cmd
+        complete -c forge -n "not __fish_seen_subcommand_from $cmds" -a $cmd
     end
 
     # init
-    complete -c ws -n "__fish_seen_subcommand_from init" -l provider -xa "github gitlab"
+    complete -c forge -n "__fish_seen_subcommand_from init" -l provider -xa "github gitlab"
 
     # status
-    complete -c ws -n "__fish_seen_subcommand_from status" -l json
-    complete -c ws -n "__fish_seen_subcommand_from status" -l graph
-    complete -c ws -n "__fish_seen_subcommand_from status" -xa "(__ws_repos)"
+    complete -c forge -n "__fish_seen_subcommand_from status" -l json
+    complete -c forge -n "__fish_seen_subcommand_from status" -l graph
+    complete -c forge -n "__fish_seen_subcommand_from status" -xa "(__forge_repos)"
 
     # clone
-    complete -c ws -n "__fish_seen_subcommand_from clone" -l name -r
+    complete -c forge -n "__fish_seen_subcommand_from clone" -l name -r
 
     # doctor
-    complete -c ws -n "__fish_seen_subcommand_from doctor" -l json
+    complete -c forge -n "__fish_seen_subcommand_from doctor" -l json
 
     # feature
-    complete -c ws -n "__fish_seen_subcommand_from feature; and not __fish_seen_subcommand_from create list worktree done" -xa "create list worktree done"
-    complete -c ws -n "__fish_seen_subcommand_from feature; and __fish_seen_subcommand_from create" -l repos -r
-    complete -c ws -n "__fish_seen_subcommand_from feature; and __fish_seen_subcommand_from worktree" -l repo -r
-    complete -c ws -n "__fish_seen_subcommand_from feature; and __fish_seen_subcommand_from worktree" -xa "(__ws_features)"
+    complete -c forge -n "__fish_seen_subcommand_from feature; and not __fish_seen_subcommand_from create list worktree done" -xa "create list worktree done"
+    complete -c forge -n "__fish_seen_subcommand_from feature; and __fish_seen_subcommand_from create" -l repos -r
+    complete -c forge -n "__fish_seen_subcommand_from feature; and __fish_seen_subcommand_from worktree" -l repo -r
+    complete -c forge -n "__fish_seen_subcommand_from feature; and __fish_seen_subcommand_from worktree" -xa "(__forge_features)"
 
     # graph
-    complete -c ws -n "__fish_seen_subcommand_from graph" -l type -xa "co-change branches"
-    complete -c ws -n "__fish_seen_subcommand_from graph" -l format -xa "json text"
-    complete -c ws -n "__fish_seen_subcommand_from graph" -l depth -r
-    complete -c ws -n "__fish_seen_subcommand_from graph" -xa "(__ws_repos)"
+    complete -c forge -n "__fish_seen_subcommand_from graph" -l type -xa "co-change branches"
+    complete -c forge -n "__fish_seen_subcommand_from graph" -l format -xa "json text"
+    complete -c forge -n "__fish_seen_subcommand_from graph" -l depth -r
+    complete -c forge -n "__fish_seen_subcommand_from graph" -xa "(__forge_repos)"
 
     # install
-    complete -c ws -n "__fish_seen_subcommand_from install" -xa "claude codex"
+    complete -c forge -n "__fish_seen_subcommand_from install" -xa "claude codex"
 
     # log
-    complete -c ws -n "__fish_seen_subcommand_from log" -l limit -r
-    complete -c ws -n "__fish_seen_subcommand_from log" -l json
+    complete -c forge -n "__fish_seen_subcommand_from log" -l limit -r
+    complete -c forge -n "__fish_seen_subcommand_from log" -l json
 
     # pr
-    complete -c ws -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create" -xa "create"
-    complete -c ws -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -l title -r
-    complete -c ws -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -l body -r
-    complete -c ws -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -l draft
-    complete -c ws -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -xa "(__ws_features)"
+    complete -c forge -n "__fish_seen_subcommand_from pr; and not __fish_seen_subcommand_from create" -xa "create"
+    complete -c forge -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -l title -r
+    complete -c forge -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -l body -r
+    complete -c forge -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -l draft
+    complete -c forge -n "__fish_seen_subcommand_from pr; and __fish_seen_subcommand_from create" -xa "(__forge_features)"
 
     # share
-    complete -c ws -n "__fish_seen_subcommand_from share" -l group -r
-    complete -c ws -n "__fish_seen_subcommand_from share" -l label -r
+    complete -c forge -n "__fish_seen_subcommand_from share" -l group -r
+    complete -c forge -n "__fish_seen_subcommand_from share" -l label -r
 
     # config
-    complete -c ws -n "__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from path validate" -xa "path validate"
-    complete -c ws -n "__fish_seen_subcommand_from config; and __fish_seen_subcommand_from validate" -l fix
+    complete -c forge -n "__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from path validate" -xa "path validate"
+    complete -c forge -n "__fish_seen_subcommand_from config; and __fish_seen_subcommand_from validate" -l fix
 
     # completion
-    complete -c ws -n "__fish_seen_subcommand_from completion" -xa "bash zsh fish"
+    complete -c forge -n "__fish_seen_subcommand_from completion" -xa "bash zsh fish"
 end
 
-function __ws_repos
+function __forge_repos
     if test -f ~/.workspace/config.json
-        command ws status --json 2>/dev/null | command python3 -c "import sys,json; d=json.load(sys.stdin); [print(r['name']) for r in d.get('repos',[])]" 2>/dev/null
+        command forge status --json 2>/dev/null | command python3 -c "import sys,json; d=json.load(sys.stdin); [print(r['name']) for r in d.get('repos',[])]" 2>/dev/null
     end
 end
 
-function __ws_features
+function __forge_features
     if test -f ~/.workspace/config.json
-        command ws feature list 2>/dev/null | grep -oP '^  \\K\\w+' 2>/dev/null || true
+        command forge feature list 2>/dev/null | grep -oP '^  \\K\\w+' 2>/dev/null || true
     end
 end
 '''
@@ -697,6 +704,14 @@ def cmd_ai(args):
             print(f"Tokens/sec: \033[33m{result['tokens_per_sec']}\033[0m")
 
 
+def cmd_deps(args):
+    action = args.action
+    if action == "list":
+        cmd_deps_list(args)
+    elif action == "outdated":
+        cmd_deps_outdated(args)
+
+
 def cmd_exec(args):
     query = args.query
     result = wsai.exec_nl(query, dry_run=args.dry_run)
@@ -705,7 +720,7 @@ def cmd_exec(args):
         return
     resolved_by = result.get("resolved_by", "")
     if resolved_by and resolved_by != "keyword":
-        print(f"\033[90mws: resolved by {resolved_by}\033[0m", file=sys.stderr)
+        print(f"\033[90mforge: resolved by {resolved_by}\033[0m", file=sys.stderr)
     if args.dry_run:
         print(f"\033[36mIntent:\033[0m {result.get('intent', '?')}")
         print(f"\033[36mCommand:\033[0m {result.get('command', '?')}")
@@ -713,6 +728,24 @@ def cmd_exec(args):
     print(f"\033[90m$ {result.get('command', '')}\033[0m")
     if result.get("output"):
         print(result["output"])
+
+
+def cmd_deps_list(args):
+    deps = forge_deps.list_deps(repo_name=args.name, ecosystem=args.ecosystem)
+    if not deps:
+        print("No dependencies found")
+        return
+    print(f"Dependencies ({len(deps)} total):")
+    for d in deps:
+        eco = d["ecosystem"]
+        ver = d["version"] or "*"
+        name = d["name"]
+        print(f"  \033[36m{eco}\033[0m  {name}  \033[90m{ver}\033[0m")
+
+
+def cmd_deps_outdated(args):
+    print("Outdated dependency check coming in v0.4.1 (CVE integration)")
+    print("For now, run: forge cve list --outdated")
 
 
 def cmd_serve(args):
@@ -748,7 +781,7 @@ def cmd_config_path(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="ws", description="Brewix Workspace CLI")
+    parser = argparse.ArgumentParser(prog="forge", description="Forge CLI")
     parser.add_argument("--version", action="store_true", help="Show version")
 
     sub = parser.add_subparsers(dest="command")
@@ -813,6 +846,11 @@ def main():
     p_config.add_argument("sub", nargs="?", default="path", choices=["path", "validate"])
     p_config.add_argument("--fix", action="store_true", help="Auto-repair fixable issues")
 
+    p_deps = sub.add_parser("deps", help="Manage project dependencies")
+    p_deps.add_argument("action", choices=["list", "outdated"], help="Dependency action")
+    p_deps.add_argument("name", nargs="?", help="Repository name (omit for all)")
+    p_deps.add_argument("--ecosystem", "-e", help="Filter by ecosystem (npm, cargo, pypi, go, rubygems)")
+
     p_completion = sub.add_parser("completion", help="Generate shell completion script")
     p_completion.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
 
@@ -834,9 +872,9 @@ def main():
     if args.version:
         from importlib.metadata import version as v
         try:
-            print(f"ws {v('ws-cli')}")
+            print(f"forge {v('forge-cli')}")
         except ImportError:
-            print("ws 0.3.0")
+            print("forge 0.4.0")
         return
 
     if not args.command:
@@ -859,6 +897,7 @@ def main():
         "notes": cmd_notes,
         "serve": cmd_serve,
         "config": cmd_config_path,
+        "deps": cmd_deps,
         "completion": cmd_completion,
         "ai": cmd_ai,
         "exec": cmd_exec,
