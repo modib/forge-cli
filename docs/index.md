@@ -4,7 +4,7 @@
 
 ---
 
-forge is the cross-project workspace CLI for [Forge OS](https://github.com/modib/forge). It manages git repos in `~/Workspace`, shares context across projects, and exposes all operations as MCP tools for AI agents.
+forge is the cross-project workspace CLI for [Forge OS](https://github.com/modib/forge). It manages git repos in `~/Workspace`, tracks dependencies and CVEs, shares context across projects, and exposes all operations as MCP tools for AI agents.
 
 ## Quick Links
 
@@ -18,10 +18,13 @@ forge is the cross-project workspace CLI for [Forge OS](https://github.com/modib
 ## What is forge?
 
 - **Cross-project status**: One command shows all your repos — branch, dirty state, ahead/behind
+- **Dependency intelligence**: Parse 6 lockfile formats across all repos; `forge cve list` shows known vulnerabilities
+- **CVE scanning**: Query OSV.dev for vulnerabilities in your workspace dependencies
 - **Feature management**: Create feature branches across multiple repos with git worktrees
+- **Config management**: `forge config validate --fix` and `forge config remove-repo` keep your workspace clean
 - **Shared context**: Notes and decisions that span projects, visible to all AI agents
-- **MCP server**: 23 tools over stdio — Claude Code, Codex, Gemini CLI, and any MCP agent can call them
-- **AI-native**: `forge ai detect` probes hardware, `forge ai setup` installs Ollama or MLX, `forge exec` routes natural language to forge commands
+- **MCP server**: 24 tools over stdio — Claude Code, Codex, Gemini CLI, and any MCP agent can call them
+- **AI-native**: `forge ai detect` probes hardware, `forge ai setup` installs Ollama or MLX with Gemma 4 models, `forge exec` routes natural language to forge commands
 
 ## Install
 
@@ -48,7 +51,7 @@ forge status
 
 ## Project Status
 
-forge CLI is in active development (v0.3). See the [roadmap](../ROADMAP.md) for what's coming.
+forge CLI is in active development (v0.4.2 — CVE Scanning + Gemma 4). See the [roadmap](../ROADMAP.md) for what's coming.
 
 ---
 

@@ -27,13 +27,13 @@ Creates `~/.forge/config.json` (fallback: `~/.workspace`) with provider settings
 
 ### `forge scan`
 
-Discover new git repositories in workspace root.
+Discover new git repositories and parse dependencies in workspace root.
 
 ```bash
 forge scan
 ```
 
-Scans `~/Workspace` for directories containing `.git`, registers any new ones in config. Skips already-registered repos.
+Scans `~/Workspace` for directories containing `.git`, registers any new ones in config. Skips already-registered repos. Also parses dependencies from 6 lockfile formats for every registered repo.
 
 ---
 
@@ -42,7 +42,7 @@ Scans `~/Workspace` for directories containing `.git`, registers any new ones in
 Show workspace or repository status.
 
 ```bash
-forge status [name] [--json]
+forge status [name] [--json] [--graph]
 ```
 
 Without `name`, shows all registered repos with:
@@ -50,10 +50,13 @@ Without `name`, shows all registered repos with:
 - Dirty state (● = uncommitted changes)
 - Ahead/behind counts
 - Last commit message
+- Remote status
 
 With `name`, shows status for a specific repo.
 
 With `--json`, outputs machine-readable JSON (includes all fields for all repos).
+
+With `--graph`, shows cross-repo co-change impact for dirty repos.
 
 ---
 
@@ -66,6 +69,19 @@ forge health
 ```
 
 Checks for: `brew`, `ollama`, `gh`, `python3`, `node`, `npm`, `gh auth`, disk space usage.
+
+---
+
+### `forge doctor`
+
+Diagnose workspace issues.
+
+```bash
+forge doctor
+forge doctor --json
+```
+
+Detects: missing repos (path not found), stale worktrees, repos without remotes, low disk space. JSON mode outputs machine-readable results.
 
 ---
 
@@ -89,6 +105,7 @@ Manage feature branches across one or more repos.
 forge feature create <name> [--repos <a,b,c>]
 forge feature list
 forge feature worktree <id> [--repo <name>]
+forge feature done <id>
 ```
 
 **`create`**: Creates a new feature with optional repo list. Generates a unique feature ID (`feat-<hex>`).
@@ -96,6 +113,34 @@ forge feature worktree <id> [--repo <name>]
 **`list`**: Lists all active features and their worktree count.
 
 **`worktree`**: Creates a git worktree for a repo in the feature. Without `--repo`, lists repos in the feature. Worktrees go in `~/.forge/.workspaces/<feature-id>/<repo>/` (fallback: `~/.workspace`).
+
+**`done`**: Cleans up all worktrees and branches for a feature, removes from config.
+
+---
+
+### `forge graph`
+
+Generate a knowledge graph for a workspace repo.
+
+```bash
+forge graph <name> [--type co-change|branches] [--depth <n>] [--format json|text]
+```
+
+**`co-change`**: Shows files that are frequently changed together (co-change relationships). Tracked across the last N commits (default: 50).
+
+**`branches`**: Shows all branches and recent commit history.
+
+---
+
+### `forge pr`
+
+Create pull requests across all repos in a feature with cross-references.
+
+```bash
+forge pr create <feature-id> [--title <title>] [--body <body>] [--draft]
+```
+
+Creates PRs in all repos belonging to the feature. Each PR body includes cross-references to sibling PRs.
 
 ---
 
@@ -123,6 +168,32 @@ Default group is `"default"`. Shows timestamp, label, and content for each note.
 
 ---
 
+### `forge install`
+
+Install and configure AI agents (Claude Code, Codex).
+
+```bash
+forge install claude
+forge install codex
+```
+
+Auto-detects the agent binary, configures MCP server settings, and sets up environment variables.
+
+---
+
+### `forge log`
+
+View agent session history.
+
+```bash
+forge log               # List recent sessions
+forge log <session-id>  # View session details + transcript
+forge log --json        # Machine-readable output
+forge log --limit <n>   # Max sessions to list
+```
+
+---
+
 ### `forge serve`
 
 Start the MCP stdio server.
@@ -131,20 +202,58 @@ Start the MCP stdio server.
 forge serve
 ```
 
-Exposes 13 tools over stdio for MCP-compatible AI agents. See [MCP server docs](./mcp.md).
+Exposes 24 tools over stdio for MCP-compatible AI agents. See [MCP server docs](./mcp.md).
 
 ---
 
 ### `forge config`
 
-Show config file path or validate workspace config.
+Manage workspace configuration.
 
 ```bash
-forge config
-forge config validate [--fix]
+forge config                     # Show config file path
+forge config validate            # Validate workspace config
+forge config validate --fix      # Auto-repair issues
+forge config remove-repo <name>  # Remove a repo from config
 ```
 
-Prints the absolute path to `~/.forge/config.json` (fallback: `~/.workspace`). With `validate`, checks for issues like missing repos, stale worktrees, and duplicate entries; `--fix` removes stale worktrees.
+With `validate`, checks for issues like missing repos, stale worktrees, and duplicate entries. `--fix` removes stale worktrees and repos with missing paths.
+
+`remove-repo` removes a repo entry from config by name (no filesystem changes).
+
+---
+
+### `forge deps`
+
+Manage project dependencies.
+
+```bash
+forge deps list                      # List all deps across all repos
+forge deps list --name <repo>        # List deps for a specific repo
+forge deps list --ecosystem pypi     # Filter by ecosystem
+forge deps outdated                  # Points to: forge cve list
+```
+
+Parses 6 lockfile formats: `package-lock.json` (npm), `Cargo.lock` (Rust), `pyproject.toml` + `requirements.txt` (Python), `go.sum` (Go), `Gemfile.lock` (Ruby). Cached in `~/.forge/deps.json`.
+
+---
+
+### `forge cve`
+
+CVE vulnerability scanning via OSV.dev API.
+
+```bash
+forge cve refresh                        # Query OSV.dev for all deps
+forge cve list                           # List cached CVEs
+forge cve list --ecosystem npm           # Filter by ecosystem
+forge cve list --min-score 7.0           # Only high+ severity
+forge cve describe CVE-2024-1234         # Show vulnerability details
+forge cve describe CVE-2024-1234 --refresh  # Re-fetch from OSV.dev
+forge cve report                         # Aggregate security summary
+forge cve report --min-score 7.0         # High+ severity only
+```
+
+Results cached in `~/.forge/cve.json`. The `report` command breaks down by severity (critical/high/moderate/low/unknown), ecosystem, and top affected packages.
 
 ---
 
@@ -170,7 +279,7 @@ forge ai detect --json              # Machine-readable JSON
 forge ai detect --backend mlx       # Show suggestion for MLX backend
 ```
 
-Detects: CPU model/cores, RAM total/available, NVIDIA/AMD/Apple GPU, disk space, Apple Silicon, MLX availability. Recommends a backend (`ollama` for Intel/Linux, `mlx` for Apple Silicon) and a model size.
+Detects: CPU model/cores, RAM total/available, NVIDIA/AMD/Apple GPU, disk space, Apple Silicon, MLX availability. Recommends a backend (`ollama` for Intel/Linux, `mlx` for Apple Silicon) and model.
 
 ---
 
@@ -182,10 +291,10 @@ Install AI backend and pull a model.
 forge ai setup                           # Auto-detect backend
 forge ai setup --backend ollama          # Install Ollama + model
 forge ai setup --backend mlx             # Install MLX + mlx-lm (Apple Silicon only)
-forge ai setup --model qwen2.5-coder:7b  # Specify model
+forge ai setup --model gemma4:e2b        # Specify model
 ```
 
-On Intel/Linux: installs Ollama, pulls a Gemma model (e.g. `gemma2:2b` for 8GB RAM, `gemma3:7b` for 16GB+). On Apple Silicon: installs `mlx` + `mlx-lm` via pip, suggests a Qwen2.5-Coder model from mlx-community.
+On Intel/Linux: installs Ollama, pulls a Gemma 4 model (`gemma4:e2b` for 8GB RAM, `gemma4:e4b` for 16GB+). On Apple Silicon: installs `mlx` + `mlx-lm` via pip, suggests a Qwen2.5-Coder model from mlx-community. Shows download progress during model pull.
 
 ---
 
@@ -210,7 +319,7 @@ View or modify AI routing configuration.
 ```bash
 forge ai config                          # Show all AI config
 forge ai config backend ollama           # Set backend
-forge ai config routing.local "phi-4-mini:3.8b"  # Set model for local routing
+forge ai config routing.local "gemma4:e2b"  # Set model for local routing
 forge ai config provider                 # Unset/remove a key
 ```
 
@@ -225,7 +334,7 @@ Run an inference speed test.
 ```bash
 forge ai benchmark                           # Default model + backend
 forge ai benchmark --backend mlx             # Test MLX backend
-forge ai benchmark --model qwen2.5-coder:7b --prompt "Write a function"
+forge ai benchmark --model gemma4:e2b --prompt "Write a function"
 ```
 
 Reports: model, prompt snippet, response length, latency (ms), tokens/sec.
@@ -240,16 +349,13 @@ Execute a natural language workspace command. No flags needed — it just works.
 forge exec "show me dirty repos"           # Keyword match → forge status
 forge exec "scan for new repos"            # Keyword match → forge scan
 forge exec "find vulnerable libraries"     # Keyword match → forge scan
+forge exec --dry-run "show dirty repos"    # Preview intent without executing
 ```
 
 **Resolution chain** (automatic, transparent):
 1. **Keyword patterns** — instant match for common queries (no model needed)
 2. **GitHub Models free tier** — if `gh` is authenticated, tries cloud API (fast, no setup)
-3. **Local model** — Ollama with Gemma (`gemma2:2b`), auto-pulled on first use, shows progress:
-   ```
-    forge: downloading gemma2:2b (this may take a minute)...
-    forge: model ready
-   ```
+3. **Local model** — Ollama with Gemma 4 (`gemma4:e2b`), auto-pulled on first use
 
 Each step shows a brief note on stderr: `forge: resolved by GitHub Models` or `forge: resolved by local model (ollama)`. If no resolver succeeds, you'll get a helpful message with an example.
 

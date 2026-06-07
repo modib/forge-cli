@@ -78,7 +78,16 @@
       "context": "Initial prompt text...",
       "worktrees": ["my-project"]
     }
-  ]
+  ],
+
+  // AI routing configuration
+  "ai": {
+    "provider": "ollama",
+    "routing": {
+      "local": "gemma4:e2b",
+      "cloud": "github-models"
+    }
+  }
 }
 ```
 
@@ -86,7 +95,9 @@
 
 | Path | Purpose |
 |------|---------|
-| `~/.forge/config.json` | Workspace state (repos, groups, features, sessions) |
+| `~/.forge/config.json` | Workspace state (repos, groups, features, sessions, AI config) |
+| `~/.forge/deps.json` | Parsed dependency cache (6 ecosystems) |
+| `~/.forge/cve.json` | OSV.dev vulnerability cache |
 | `~/.forge/sessions/<id>/meta.json` | Session metadata |
 | `~/.forge/sessions/<id>/transcript.md` | Session transcript |
 | `~/.forge/worktrees/<feature-id>/<repo>/` | Git worktrees for active feature |
@@ -97,19 +108,27 @@
 | Command | Description |
 |---------|-------------|
 | `forge init [--provider github]` | Initialize workspace config + auth |
-| `forge scan` | Discover new git repos in workspace root |
-| `forge status [name] [--json]` | Show workspace/repo status |
-| `forge clone <url> [--name]` | Clone repo into workspace |
+| `forge scan` | Discover new git repos + parse dependencies |
+| `forge status [name] [--json] [--graph]` | Show workspace/repo status |
 | `forge health` | Check dev environment tools |
-| `forge feature create <name> [--repos a,b]` | Create feature |
-| `forge feature list` | List features |
-| `forge feature worktree <id> [--repo name]` | Manage worktrees |
+| `forge doctor [--json]` | Diagnose workspace issues |
+| `forge clone <url> [--name]` | Clone repo into workspace |
+| `forge feature create/list/worktree/done` | Manage feature branches |
+| `forge graph <name> [--type] [--format]` | Knowledge graph for any repo |
+| `forge pr create <feature-id> [--title] [--body] [--draft]` | Create PRs with cross-references |
 | `forge share <content> [--group g] [--label l]` | Share note across projects |
 | `forge notes [group]` | List shared notes |
+| `forge install claude|codex` | Install and configure AI agents |
+| `forge log [id] [--limit] [--json]` | View agent session history |
+| `forge config [path\|validate\|remove-repo]` | Manage workspace configuration |
+| `forge deps list [--name] [--ecosystem]` | List project dependencies |
+| `forge cve refresh\|list\|describe\|report` | CVE vulnerability scanning |
+| `forge ai detect\|setup\|status\|config\|benchmark` | AI integration commands |
+| `forge exec <query> [--dry-run]` | Natural language workspace command |
 | `forge serve` | Start MCP stdio server |
-| `forge config` | Show config file path |
+| `forge completion bash\|zsh\|fish` | Generate shell completion script |
 
-## MCP Tool Schema (13 Tools)
+## MCP Tool Schema (24 Tools)
 
 The `forge serve` command starts an MCP server over stdio. Connect any MCP-compatible AI agent (Claude Code, Codex, Gemini CLI).
 
@@ -141,6 +160,11 @@ Get overall workspace status across all repos.
 Check dev environment health.
 - **Args:** None
 - **Returns:** `{brew, ollama, gh, python3, node, npm, gh_auth, disk_*}`
+
+#### `workspace_doctor`
+Diagnose workspace issues (missing repos, stale worktrees, no remotes).
+- **Args:** None
+- **Returns:** `{total_issues, issues: [{severity, detail, repo?, feature?}]}`
 
 #### `workspace_scan`
 Scan workspace root for new git repositories.
@@ -190,14 +214,72 @@ Get shared notes for a group.
 - **Args:** `group` (string, required)
 - **Returns:** `[{content, label, timestamp}]`
 
+### Graph Tools
+
+#### `generate_graph`
+Generate a knowledge graph for a workspace repo (co-change or branches).
+- **Args:** `name` (string, required), `graph_type` (co-change|branches, optional), `depth` (integer, optional)
+- **Returns:** Graph data as JSON (nodes, edges, branches, history)
+
+### PR Tools
+
+#### `create_prs`
+Create PRs across all repos in a feature with cross-references.
+- **Args:** `feature_id` (string, required), `title` (string, optional), `body` (string, optional), `draft` (boolean, optional)
+- **Returns:** `{feature, id, prs: [{repo, status, url?}]}`
+
+### Config Tools
+
+#### `validate_config`
+Validate workspace configuration and optionally fix issues.
+- **Args:** `fix` (boolean, optional)
+- **Returns:** `{valid, issues, _repaired?}`
+
+### Completion Tools
+
+#### `generate_completion`
+Generate shell completion script for bash, zsh, or fish.
+- **Args:** `shell` (bash|zsh|fish, required)
+- **Returns:** Shell completion script text
+
+### AI Tools
+
+#### `ai_detect`
+Detect hardware profile (CPU, RAM, GPU, disk, Apple Silicon, MLX).
+- **Args:** None
+- **Returns:** `{platform, arch, cpu, memory, gpu, disk, apple_silicon, mlx_available, recommended_backend}`
+
+#### `ai_config`
+View or modify AI configuration.
+- **Args:** `key` (string, optional), `value` (string, optional)
+- **Returns:** Current AI config as JSON
+
+#### `exec_nl`
+Execute a natural language workspace command (keyword → GitHub Models → local model).
+- **Args:** `query` (string, required), `dry_run` (boolean, optional)
+- **Returns:** `{intent, command, output, resolved_by}`
+
+#### `ai_setup`
+Set up AI backend (ollama or mlx) and pull model.
+- **Args:** `backend` (ollama|mlx, optional), `model` (string, optional)
+- **Returns:** `{backend, model, log, ollama_installed?, mlx_installed?}`
+
+#### `ai_benchmark`
+Run inference benchmark on AI backend.
+- **Args:** `model` (string, optional), `prompt` (string, optional), `backend` (ollama|mlx, optional)
+- **Returns:** `{backend, model, latency_ms, tokens_per_sec, response_length}`
+
+#### `ai_status`
+Check whether AI model backend is ready for inference.
+- **Args:** `backend` (ollama|mlx, optional), `model` (string, optional)
+- **Returns:** `{ready: bool, backend, model, note?, error?}`
+
 ## Integration: graphify
 
 The forge CLI can launch graphify as a subprocess for codebase knowledge graphs:
 
 ```bash
-graphify clone https://github.com/user/repo     # graphify's own clone
-forge status --json                              # forge status as JSON
-graphify query "how does auth work?"             # query graph
+forge graph my-project                         # co-change graph
+forge graph my-project --type branches         # branch/commit graph
+forge status --json                            # forge status as JSON
 ```
-
-Long-term: `forge status --json | graphify extract --stdin` for workspace-wide codebase understanding.

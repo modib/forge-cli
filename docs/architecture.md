@@ -11,7 +11,7 @@ forge is organized as three layers:
 ```
 ┌─────────────────────────────────────────────┐
 │                 CLI Layer                     │
-│  argparse-based interface (forge init, status)  │
+│  argparse-based interface (forge init, status)│
 ├─────────────────────────────────────────────┤
 │               Engine Layer                    │
 │  State management, git ops, health checks    │
@@ -27,9 +27,14 @@ forge is organized as three layers:
 |--------|---------------|
 | `cli.py` | Argument parsing, command dispatch, terminal output |
 | `config.py` | Load/save `~/.forge/config.json` (fallback: `~/.workspace`), repo lookup |
-| `engine.py` | Workspace scanning, status aggregation, health checks |
+| `engine.py` | Workspace scanning, status aggregation, health checks, diagnostics, PR creation |
 | `git.py` | Git subprocess wrapper (discover, status, clone) |
-| `server.py` | MCP protocol server (23 tools over stdio) |
+| `server.py` | MCP protocol server (24 tools over stdio) |
+| `graph.py` | Knowledge graph generation (co-change analysis, branch visualization) |
+| `ai.py` | Hardware detection, AI setup (Ollama/MLX), model suggestion, NL routing |
+| `deps.py` | Dependency parsing (6 lockfile formats), caching in `deps.json` |
+| `cve.py` | OSV.dev API client, CVE query + caching in `cve.json`, report generation |
+| `install.py` | AI agent install (Claude Code, Codex) with MCP config |
 
 ## State Flow
 
@@ -42,6 +47,7 @@ forge scan
   → git.py: discover_repos(~/Workspace) → list of {name, path, url}
   → config.py: repo_by_path() → deduplicate → add_repo()
   → config.py: save_config()
+  → deps.py: parse_repo_deps() for each repo → cache in deps.json
 
 forge status
   → config.py: load_config()
@@ -49,11 +55,16 @@ forge status
   → engine.py: get_overall_status() → aggregate + format
   → cli.py: terminal output or JSON
 
+forge cve refresh
+  → deps.py: list_deps() → all deps across all repos
+  → cve.py: _query_osv() for each uncached dep
+  → cve.py: _save_cache() → ~/.forge/cve.json
+
 forge serve
   → server.py: MCP Server("forge")
   → stdio_server() → await JSON-RPC messages
-  → list_tools() → return 23 tool definitions
-  → call_tool(name, args) → dispatch to engine/config/git
+  → list_tools() → return 24 tool definitions
+  → call_tool(name, args) → dispatch to engine/config/git/ai
   → return TextContent
 ```
 
@@ -65,7 +76,7 @@ Agent                    forge serve
   │── initialize ─────────→│
   │←────── result ────────│
   │── tools/list ─────────→│
-  │←── 23 tool defs ──────│
+  │←── 24 tool defs ──────│
   │── tools/call ─────────→│
   │   workspace_status     │──→ engine.get_overall_status()
   │←────── result ────────│←── JSON response
@@ -81,7 +92,9 @@ Agent                    forge serve
 
 ```
 ~/.forge/                # (also checks ~/.workspace for backward compat)
-├── config.json          # All workspace state (repos, groups, features, sessions)
+├── config.json          # All workspace state (repos, groups, features, sessions, AI config)
+├── deps.json            # Parsed dependency cache (6 ecosystems)
+├── cve.json             # OSV.dev vulnerability cache
 ├── sessions/<id>/       # Agent session artifacts
 │   ├── meta.json        # Session metadata
 │   └── transcript.md    # Full transcript (Markdown)
@@ -94,4 +107,3 @@ Agent                    forge serve
 ---
 
 **[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
-```

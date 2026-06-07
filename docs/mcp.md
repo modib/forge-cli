@@ -84,6 +84,13 @@ Check dev environment health (brew, ollama, gh, python, node, disk).
 - **Args:** None
 - **Returns:** `{brew, ollama, gh, python3, node, npm, gh_auth, disk_total_gb, disk_free_gb, disk_used_pct}`
 
+#### `workspace_doctor`
+
+Diagnose workspace issues (missing repos, stale worktrees, no remotes).
+
+- **Args:** None
+- **Returns:** `{total_issues, issues: [{severity, detail, repo?, feature?}]}`
+
 #### `workspace_scan`
 
 Scan workspace root for new git repositories.
@@ -150,6 +157,42 @@ Get shared notes for a group.
 - **Args:** `group` (string, required)
 - **Returns:** `[{content, label, timestamp}]`
 
+### Graph Tools
+
+#### `generate_graph`
+
+Generate a knowledge graph for a workspace repo (co-change or branches).
+
+- **Args:** `name` (string, required), `graph_type` (enum: `co-change`|`branches`, optional), `depth` (integer, optional)
+- **Returns:** Graph data as JSON (nodes, edges, branches, history)
+
+### PR Tools
+
+#### `create_prs`
+
+Create PRs across all repos in a feature with cross-references.
+
+- **Args:** `feature_id` (string, required), `title` (string, optional), `body` (string, optional), `draft` (boolean, optional)
+- **Returns:** `{feature, id, prs: [{repo, status, url?}]}`
+
+### Config Tools
+
+#### `validate_config`
+
+Validate workspace configuration and optionally repair issues.
+
+- **Args:** `fix` (boolean, optional)
+- **Returns:** `{valid, issues, _repaired?}`
+
+### Completion Tools
+
+#### `generate_completion`
+
+Generate shell completion script for bash, zsh, or fish.
+
+- **Args:** `shell` (enum: `bash`|`zsh`|`fish`, required)
+- **Returns:** Shell completion script text
+
 ### AI Tools
 
 #### `ai_detect`
@@ -205,7 +248,7 @@ printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion
 forge uses the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. The server:
 
 1. Receives `initialize` request
-2. Responds with server capabilities (23 tools)
+2. Responds with server capabilities (24 tools)
 3. Handles `tools/list` and `tools/call` requests
 4. Returns results as `TextContent` in JSON-RPC responses
 

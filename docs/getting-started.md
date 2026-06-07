@@ -31,7 +31,7 @@ Verify:
 
 ```bash
 forge --version
-# forge 0.1.0
+# forge 0.4.2
 ```
 
 ## Initialize
@@ -54,7 +54,7 @@ Providers: github, gitlab
 forge scan
 ```
 
-This finds all git repositories in `~/Workspace` and registers them.
+This finds all git repositories in `~/Workspace`, registers them, and parses their dependencies.
 
 ```
 Scanned 12 repos in /home/user/Workspace
@@ -63,6 +63,7 @@ Added 8 new repos:
   + another-project
   + docs
   ...
+Parsed 142 dependencies across 12 repos
 ```
 
 ## Check Status
@@ -115,13 +116,39 @@ Dev Environment Health
 Disk: 28.8% used (150.7 GB free of 228.0 GB)
 ```
 
+## Scan for Vulnerabilities
+
+```bash
+# Refresh CVE data from OSV.dev
+forge cve refresh
+
+# List all known CVEs
+forge cve list
+
+# Security report
+forge cve report
+```
+
+## List Dependencies
+
+```bash
+# All deps across all projects
+forge deps list
+
+# Filter by ecosystem
+forge deps list --ecosystem pypi
+
+# Per-repo
+forge deps list --name my-project
+```
+
 ## Connect AI Agents
 
 ```bash
 forge serve
 ```
 
-Starts the MCP stdio server with 23 tools. See the [MCP documentation](./mcp.md) for agent setup.
+Starts the MCP stdio server with 24 tools. See the [MCP documentation](./mcp.md) for agent setup.
 
 ---
 
