@@ -9,6 +9,7 @@ from . import graph as forgegraph
 from . import install as forgeinstall
 from . import ai as forgeai
 from . import deps as forge_deps
+from . import cve as forge_cve
 
 
 def cmd_init(args):
@@ -407,7 +408,7 @@ def _completion_script(shell):
     local cur prev words cword
     _init_completion || return
 
-    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config completion"
+    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve completion"
     local feature_actions="create list worktree done"
     local pr_actions="create"
     local install_agents="claude codex"
@@ -463,6 +464,9 @@ def _completion_script(shell):
         config)
             COMPREPLY=($(compgen -W "$config_actions --fix" -- "$cur"))
             ;;
+        cve)
+            COMPREPLY=($(compgen -W "refresh list describe report --ecosystem --min-score" -- "$cur"))
+            ;;
         share)
             COMPREPLY=($(compgen -W "--group --label" -- "$cur"))
             ;;
@@ -508,6 +512,8 @@ _forge() {
                 "share[Share a note across projects]" \\
                 "serve[Start MCP server (stdio)]" \\
                 "config[Manage workspace configuration]" \\
+                "deps[Manage project dependencies]" \\
+                "cve[CVE vulnerability scanning]" \\
                 "completion[Generate shell completion scripts]"
             ;;
         args)
@@ -556,6 +562,12 @@ _forge() {
                 config)
                     _arguments "1:action:(path validate remove-repo)" "--fix[Auto-repair fixable issues]"
                     ;;
+                cve)
+                    _arguments "1:action:(refresh list describe report)" \\
+                        "--ecosystem[Filter by ecosystem]:" \\
+                        "--min-score[Minimum CVSS score]:" \\
+                        "--refresh[Re-fetch details from OSV.dev]"
+                    ;;
                 completion)
                     _arguments "1:shell:(bash zsh fish)"
                     ;;
@@ -584,7 +596,7 @@ _forge "$@"
 '''
     elif shell == "fish":
         return '''function _forge_completions
-    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config completion
+    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve completion
 
     # Top-level commands
     complete -c forge -f
@@ -639,6 +651,12 @@ _forge "$@"
     # config
     complete -c forge -n "__fish_seen_subcommand_from config; and not __fish_seen_subcommand_from path validate remove-repo" -xa "path validate remove-repo"
     complete -c forge -n "__fish_seen_subcommand_from config; and __fish_seen_subcommand_from validate" -l fix
+
+    # cve
+    complete -c forge -n "__fish_seen_subcommand_from cve; and not __fish_seen_subcommand_from refresh list describe report" -xa "refresh list describe report"
+    complete -c forge -n "__fish_seen_subcommand_from cve; and __fish_seen_subcommand_from list report" -l ecosystem -r
+    complete -c forge -n "__fish_seen_subcommand_from cve; and __fish_seen_subcommand_from list report" -l min-score -r
+    complete -c forge -n "__fish_seen_subcommand_from cve; and __fish_seen_subcommand_from describe" -l refresh
 
     # completion
     complete -c forge -n "__fish_seen_subcommand_from completion" -xa "bash zsh fish"
@@ -744,8 +762,67 @@ def cmd_deps_list(args):
 
 
 def cmd_deps_outdated(args):
-    print("Outdated dependency check coming in v0.4.1 (CVE integration)")
-    print("For now, run: forge cve list --outdated")
+    print("Use: forge cve list --min-score 0")
+    print("  or: forge cve report")
+
+
+def cmd_cve(args):
+    action = args.action
+    if action == "refresh":
+        result = forge_cve.refresh()
+        print(f"Queried {result['queried']} packages")
+        print(f"Found {result['vulns_found']} new vulnerabilities")
+        print(f"Total cached: {result['total_cached']}")
+    elif action == "list":
+        cves = forge_cve.list_cves(
+            repo_name=args.name,
+            ecosystem=args.ecosystem,
+            min_score=args.min_score,
+        )
+        if not cves:
+            print("No CVEs found")
+            return
+        print(f"CVEs ({len(cves)} total):")
+        for v in cves:
+            score = v.get("cvss_score")
+            score_str = f"  \033[33m{score:.1f}\033[0m" if score is not None else "  \033[90m? \033[0m"
+            summary = v.get("summary", "")
+            if len(summary) > 60:
+                summary = summary[:57] + "..."
+            print(f"  \033[36m{v['id']}\033[0m{score_str}  {v['package']}@{v['version']}  \033[90m{summary}\033[0m")
+    elif action == "describe":
+        result = forge_cve.describe(args.vuln_id, refresh_cache=args.refresh)
+        if result is None:
+            print(f"\033[31mCould not fetch details for {args.vuln_id}\033[0m")
+            return
+        print(f"\033[36m{result['id']}\033[0m")
+        if result.get("summary"):
+            print(f"  Summary: {result['summary']}")
+        if result.get("cvss_score") is not None:
+            print(f"  CVSS:    \033[33m{result['cvss_score']:.1f}\033[0m")
+        if result.get("aliases"):
+            print(f"  Aliases: {', '.join(result['aliases'])}")
+    elif action == "report":
+        result = forge_cve.report(
+            repo_name=args.name,
+            ecosystem=args.ecosystem,
+            min_score=args.min_score,
+        )
+        print("\033[36mSecurity Report\033[0m")
+        print(f"  Total CVEs:      {result['total']}")
+        if result["total"] == 0:
+            print("\033[32m  No vulnerabilities found\033[0m")
+            return
+        sev = result["by_severity"]
+        print(f"  Critical:        {sev['critical']}")
+        print(f"  High:            {sev['high']}")
+        print(f"  Moderate:        {sev['moderate']}")
+        print(f"  Low:             {sev['low']}")
+        print(f"  Unknown:         {sev['unknown']}")
+        if result["top_packages"]:
+            print("\n  Top affected packages:")
+            for pkg, count in result["top_packages"]:
+                print(f"    {pkg}  ({count})")
 
 
 def cmd_serve(args):
@@ -868,6 +945,14 @@ def main():
     p_deps.add_argument("name", nargs="?", help="Repository name (omit for all)")
     p_deps.add_argument("--ecosystem", "-e", help="Filter by ecosystem (npm, cargo, pypi, go, rubygems)")
 
+    p_cve = sub.add_parser("cve", help="CVE vulnerability scanning")
+    p_cve.add_argument("action", choices=["refresh", "list", "describe", "report"], help="CVE action")
+    p_cve.add_argument("name", nargs="?", help="Repository name (omit for all)")
+    p_cve.add_argument("vuln_id", nargs="?", help="Vulnerability ID (for describe)")
+    p_cve.add_argument("--ecosystem", "-e", help="Filter by ecosystem")
+    p_cve.add_argument("--min-score", type=float, default=None, help="Minimum CVSS score filter")
+    p_cve.add_argument("--refresh", action="store_true", help="Re-fetch details from OSV.dev")
+
     p_completion = sub.add_parser("completion", help="Generate shell completion script")
     p_completion.add_argument("shell", choices=["bash", "zsh", "fish"], help="Shell type")
 
@@ -915,6 +1000,7 @@ def main():
         "serve": cmd_serve,
         "config": cmd_config_path,
         "deps": cmd_deps,
+        "cve": cmd_cve,
         "completion": cmd_completion,
         "ai": cmd_ai,
         "exec": cmd_exec,

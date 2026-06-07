@@ -55,17 +55,17 @@ class TestSuggestModel:
     def test_suggests_large_model_for_16gb(self):
         profile = {"memory": {"total_gb": 16}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
-        assert model == "gemma3:7b"
+        assert model == "gemma4:e4b"
 
     def test_suggests_medium_model_for_8gb(self):
         profile = {"memory": {"total_gb": 8}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
-        assert model == "gemma2:2b"
+        assert model == "gemma4:e2b"
 
     def test_suggests_small_model_for_low_ram(self):
         profile = {"memory": {"total_gb": 4}, "gpu": [{"vendor": "none", "model": "none"}]}
         model = ai.suggest_model(profile)
-        assert model == "gemma2:2b"
+        assert model == "gemma4:e2b"
 
     def test_suggests_apple_silicon_mlx_large(self):
         profile = {"memory": {"total_gb": 16}, "apple_silicon": True}
@@ -189,10 +189,10 @@ class TestAiConfig:
     def test_config_set_nested(self, forge_config):
         class FakeArgs:
             key = "routing.local"
-            value = "gemma2:2b"
+            value = "gemma4:e2b"
         ai.ai_config_cmd(FakeArgs())
         c = forge_config.load_config()
-        assert c["ai"]["routing"]["local"] == "gemma2:2b"
+        assert c["ai"]["routing"]["local"] == "gemma4:e2b"
 
     def test_config_unset(self, forge_config):
         c = forge_config.load_config()

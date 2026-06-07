@@ -164,10 +164,10 @@ def suggest_model(profile, backend=None):
             return "Qwen2.5-Coder-7B-Instruct"
         return "Qwen2.5-Coder-1.5B-Instruct"
     if mem >= 16:
-        return "gemma3:7b"
+        return "gemma4:e4b"
     if mem >= 8:
-        return "gemma2:2b"
-    return "gemma2:2b"
+        return "gemma4:e2b"
+    return "gemma4:e2b"
 
 
 def check_ollama():
@@ -284,10 +284,13 @@ def setup_ollama(model=None, profile=None):
     if not model:
         model = suggest_model(profile, backend="ollama")
     log.append(f"Pulling model: {model}...")
+    print(f"\r\033[36m▸\033[0m Pulling {model} (this may take a few minutes)...", end="", flush=True)
     try:
         pull = subprocess.run(["ollama", "pull", model], capture_output=True, text=True, timeout=300)
+        print("\r" + " " * 60, end="", flush=True)
         if pull.returncode != 0:
             return {"error": f"Failed to pull model {model}: {pull.stderr.strip()}"}
+        print("\033[32m✓ Model download complete\033[0m")
         log.append(f"Model {model} downloaded")
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         return {"error": f"Model pull timed out: {e}"}
@@ -341,7 +344,7 @@ def _benchmark_ollama(model=None, prompt="Hello"):
     if not check_ollama():
         return {"error": "Ollama not installed. Run 'forge ai setup' first."}
     if not model:
-        model = "phi-4-mini:3.8b"
+        model = "gemma4:e2b"
     import time
     start = time.time()
     try:

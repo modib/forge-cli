@@ -46,29 +46,45 @@
 - [x] `forge ai benchmark` — inference speed test (ollama + mlx backends)
 - [x] Apple Silicon detection + MLX backend support (M1–M4 unified memory)
 - [x] Dual model suggestion: Ollama (Gemma 2B/7B GGUF) on Intel/Linux, MLX (Qwen2.5-Coder safetensors) on Apple Silicon
-- [ ] Model routing: local ↔ BYO key ↔ GitHub Models free tier
+- [x] Model routing: local ↔ BYO key ↔ GitHub Models free tier
 - [ ] Session packing: `forge session summarize <id>` → compact context
 
-## v0.4 — Agent Handoff & Dashboard
+## v0.4 — Dependency Intelligence & Security
 
-**Agents pass context. Sessions are searchable.**
+**Project awareness: deps, CVEs, semantic query. Agent handoff deferred to v0.5.**
 
+### v0.4.0 — Rename + Dep Parsing (shipped)
+- [x] Rename `ws` → `forge` (CLI, MCP, config, completions, docs)
+- [x] `forge scan` parses deps from 6 ecosystems (npm, Cargo, pyproject.toml, requirements.txt, go.sum, Gemfile.lock)
+- [x] `forge deps list` with `--name` and `--ecosystem` filters
+- [x] `forge deps outdated` stub → migrated to `forge cve`
+- [x] Config migration: `~/.forge/` primary, `~/.workspace/` fallback
+- [x] 248 tests, ruff + mypy clean, CI/CD pipeline, Homebrew tap
+
+### v0.4.1 — Config Mgmt + CVE Scanning (shipping now)
+- [x] `forge config remove-repo <name>` — remove stale repos from config
+- [x] `forge config validate --fix` — also purges repos with missing paths
+- [x] `forge cve refresh` — query OSV.dev API for all deps
+- [x] `forge cve list` — list cached CVEs with `--ecosystem`, `--min-score` filters
+- [x] `forge cve describe <id>` — fetch + cache OSV.dev vulnerability details
+- [x] `forge cve report` — aggregate security summary across workspace
+
+### v0.4.2 — RAG + Gemma 4
+- [ ] nomic-embed-text embeddings + FAISS vector store
+- [ ] `forge ask "natural language query"` — semantic search across workspace
+- [ ] Swap suggested model: Gemma 2 2B → Gemma 4 E2B (128K ctx, function calling)
+- [ ] Cached CVE → RAG context for `forge ask`
+
+## v0.5 — Agent Handoff & Dashboard
+
+**Agents pass context. Sessions are searchable. CVE-aware agent spawning.**
+
+- [ ] `forge cve fix <id>` — spawn agent with CVE context to auto-fix
 - [ ] Agent handoff: `forge agent handoff <session-id> --to codex`
 - [ ] Session search: `forge sessions search "decision about auth"`
 - [ ] Session diff: `forge sessions diff <id-a> <id-b>`
-- [ ] `forge dashboard` — TUI for agents, worktrees, decisions
-- [ ] Decision broadcasting between sibling worktrees
+- [ ] `forge dashboard` — TUI for agents, worktrees, CVEs, decisions
 - [ ] GitHub issues: `forge session <id> --to-issue`
-
-## v0.5 — Ambient Intelligence
-
-**Proactive workspace monitoring.**
-
-- [ ] `forge watch` — daemon for workspace state changes
-- [ ] Error pattern detection (repeated test failures, build errors)
-- [ ] Health regression alerts (disk, model, git divergence)
-- [ ] Predictive worktree suggestions
-- [ ] Status notifications in terminal
 
 ## v1.0 — Production Ready
 
