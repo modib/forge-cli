@@ -65,10 +65,10 @@ def _configure_claude_mcp():
             pass
 
     config.setdefault("mcpServers", {})
-    ws_cmd = _forge_serve_command()
+    forge_cmd = _forge_serve_command()
     config["mcpServers"]["forge"] = {
-        "command": ws_cmd[0],
-        "args": ws_cmd[1:],
+        "command": forge_cmd[0],
+        "args": forge_cmd[1:],
     }
 
     with open(config_file, "w") as f:
@@ -77,8 +77,8 @@ def _configure_claude_mcp():
 
 
 def _configure_codex_env():
-    ws_cmd = _forge_serve_command()
-    servers = json.dumps([{"command": ws_cmd[0], "args": ws_cmd[1]}])
+    forge_cmd = _forge_serve_command()
+    servers = json.dumps([{"command": forge_cmd[0], "args": forge_cmd[1]}])
     config_dir = os.path.expanduser("~/.config/codex")
     os.makedirs(config_dir, exist_ok=True)
     env_file = os.path.join(config_dir, "env.json")

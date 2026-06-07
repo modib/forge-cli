@@ -4,7 +4,7 @@
 
 ---
 
-forge is the cross-project workspace CLI for [Forge](https://github.com/forge/forge). It manages git repos in `~/Workspace`, shares context across projects, and exposes all operations as MCP tools for AI agents.
+forge is the cross-project workspace CLI for [Forge OS](https://github.com/modib/forge). It manages git repos in `~/Workspace`, shares context across projects, and exposes all operations as MCP tools for AI agents.
 
 ## Quick Links
 

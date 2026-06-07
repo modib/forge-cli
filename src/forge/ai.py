@@ -508,7 +508,7 @@ def _resolve_with_github_models(query):
             if result:
                 return result
     except Exception as e:
-        print(f"\033[90mws: GitHub Models API error: {e}\033[0m", file=sys.stderr)
+        print(f"\033[90mforge: GitHub Models API error: {e}\033[0m", file=sys.stderr)
     return None
 
 
@@ -516,12 +516,12 @@ def _ensure_ollama_model(model, timeout=300):
     out = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=10)
     if out.returncode == 0 and model in out.stdout:
         return True
-    print(f"\033[90mws: downloading {model} (this may take a minute)...\033[0m", file=sys.stderr)
+    print(f"\033[90mforge: downloading {model} (this may take a minute)...\033[0m", file=sys.stderr)
     pull = subprocess.run(["ollama", "pull", model], capture_output=True, text=True, timeout=timeout)
     if pull.returncode != 0:
-        print(f"\033[90mws: download failed: {pull.stderr.strip()}\033[0m", file=sys.stderr)
+        print(f"\033[90mforge: download failed: {pull.stderr.strip()}\033[0m", file=sys.stderr)
         return False
-    print(f"\033[90mws: {model} ready\033[0m", file=sys.stderr)
+    print(f"\033[90mforge: {model} ready\033[0m", file=sys.stderr)
     return True
 
 
@@ -555,7 +555,7 @@ def _resolve_with_mlx(query, model=None):
     prompt = _EXEC_PROMPT.format(query=query)
     try:
         from mlx_lm import load, generate
-        print(f"\033[90mws: loading {model}...\033[0m", file=sys.stderr)
+        print(f"\033[90mforge: loading {model}...\033[0m", file=sys.stderr)
         model_obj, tokenizer = load(f"mlx-community/{model}")
         response = generate(model_obj, tokenizer, prompt=prompt, max_tokens=128, verbose=False)
         return _parse_json_response(response)
@@ -604,7 +604,7 @@ def exec_nl(query, dry_run=False):
     model = ready["model"]
     note = ready.get("note", "")
     if note:
-        print(f"\033[90mws: {note}\033[0m", file=sys.stderr)
+        print(f"\033[90mforge: {note}\033[0m", file=sys.stderr)
     if backend == "mlx":
         intent = _resolve_with_mlx(query, model)
     else:

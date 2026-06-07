@@ -1,1 +1,1 @@
-from . import deps
+from . import deps as deps

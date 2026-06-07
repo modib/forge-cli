@@ -138,7 +138,7 @@ forge status --json | graphify extract --stdin  # (future)
 ## Contributing
 
 ```bash
-git clone https://github.com/forge/forge-cli
+git clone https://github.com/modib/forge-cli
 cd forge-cli
 pipx install -e .
 ```

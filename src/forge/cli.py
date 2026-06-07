@@ -5,9 +5,9 @@ import sys
 from . import config as cfg
 from . import engine
 from . import git
-from . import graph as wsgraph
-from . import install as wsinstall
-from . import ai as wsai
+from . import graph as forgegraph
+from . import install as forgeinstall
+from . import ai as forgeai
 from . import deps as forge_deps
 
 
@@ -100,7 +100,7 @@ def cmd_status(args):
     if args.graph:
         dirty_map = {r["name"]: r.get("path", "") for r in status["repos"] if r.get("dirty") and r.get("exists") and r.get("path")}
         if dirty_map:
-            impacts = wsgraph.cross_repo_impact(dirty_map)
+            impacts = forgegraph.cross_repo_impact(dirty_map)
             if impacts:
                 print("\n\033[36mCross-repo impact:\033[0m")
                 for imp in impacts:
@@ -217,19 +217,19 @@ def cmd_feature(args):
         if not repo:
             print(f"Repo not found: {repo_name}")
             return
-        ws_dir = os.path.join(cfg.WORKSPACE_DIR, "..", ".workspaces", fname)
-        os.makedirs(ws_dir, exist_ok=True)
+        worktrees_dir = os.path.join(cfg.WORKSPACE_DIR, "..", ".workspaces", fname)
+        os.makedirs(worktrees_dir, exist_ok=True)
         branch = f"feature/{fname}"
         result = subprocess.run(
-            ["git", "worktree", "add", "-b", branch, os.path.join(ws_dir, repo_name), "HEAD"],
+            ["git", "worktree", "add", "-b", branch, os.path.join(worktrees_dir, repo_name), "HEAD"],
             cwd=repo["path"], capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
             print(f"Worktree error: {result.stderr.strip() or result.stdout.strip()}")
             return
-        feature.setdefault("worktrees", {})[repo_name] = os.path.join(ws_dir, repo_name)
+        feature.setdefault("worktrees", {})[repo_name] = os.path.join(worktrees_dir, repo_name)
         cfg.save_config(c)
-        print(f"Created worktree for {repo_name} at {os.path.join(ws_dir, repo_name)}")
+        print(f"Created worktree for {repo_name} at {os.path.join(worktrees_dir, repo_name)}")
     elif action == "done":
         result = engine.complete_feature(args.name)
         if "error" in result:
@@ -286,7 +286,7 @@ def cmd_notes(args):
 
 def cmd_graph(args):
     import json as j
-    result = wsgraph.generate_graph(args.name, graph_type=args.type, depth=args.depth)
+    result = forgegraph.generate_graph(args.name, graph_type=args.type, depth=args.depth)
     if "error" in result:
         print(f"\033[31m{result['error']}\033[0m")
         return
@@ -362,7 +362,7 @@ def cmd_log(args):
 
 
 def cmd_install(args):
-    result = wsinstall.install_agent(args.agent)
+    result = forgeinstall.install_agent(args.agent)
     if "error" in result:
         print(f"\033[31m{result['error']}\033[0m")
         return
@@ -482,7 +482,7 @@ complete -F _forge_completions forge
     elif shell == "zsh":
         return '''#compdef forge
 
-_ws() {
+_forge() {
     local line state
 
     _arguments -C \\
@@ -566,7 +566,7 @@ _ws() {
 
 _forge_repos() {
     local -a repos
-    if [[ -f ~/.workspace/config.json ]]; then
+    if [[ -f ~/.forge/config.json ]]; then
         repos=(${(f)"$(command forge status --json 2>/dev/null | command python3 -c \"import sys,json; d=json.load(sys.stdin); [print(r['name']) for r in d.get('repos',[])]\" 2>/dev/null)"})
     fi
     _values 'repos' $repos
@@ -574,13 +574,13 @@ _forge_repos() {
 
 _forge_features() {
     local -a features
-    if [[ -f ~/.workspace/config.json ]]; then
+    if [[ -f ~/.forge/config.json ]]; then
         features=(${(f)"$(command forge config path 2>/dev/null && command forge feature list 2>/dev/null | command grep -oP '^  \\K\\w+' 2>/dev/null || true)"})
     fi
     _values 'features' $features
 }
 
-_ws "$@"
+_forge "$@"
 '''
     elif shell == "fish":
         return '''function _forge_completions
@@ -645,13 +645,13 @@ _ws "$@"
 end
 
 function __forge_repos
-    if test -f ~/.workspace/config.json
+    if test -f ~/.forge/config.json
         command forge status --json 2>/dev/null | command python3 -c "import sys,json; d=json.load(sys.stdin); [print(r['name']) for r in d.get('repos',[])]" 2>/dev/null
     end
 end
 
 function __forge_features
-    if test -f ~/.workspace/config.json
+    if test -f ~/.forge/config.json
         command forge feature list 2>/dev/null | grep -oP '^  \\K\\w+' 2>/dev/null || true
     end
 end
@@ -663,11 +663,11 @@ end
 def cmd_ai(args):
     action = args.action
     if action == "detect":
-        wsai.detect_and_print(args)
+        forgeai.detect_and_print(args)
     elif action == "config":
-        wsai.ai_config_cmd(args)
+        forgeai.ai_config_cmd(args)
     elif action == "status":
-        ready = wsai.check_model_ready(backend=args.backend)
+        ready = forgeai.check_model_ready(backend=args.backend)
         if ready.get("ready"):
             print("\033[32m✓\033[0m Model ready")
             print(f"  Backend: \033[36m{ready['backend']}\033[0m")
@@ -678,7 +678,7 @@ def cmd_ai(args):
             print("\033[31m✗\033[0m Model not ready")
             print(f"  {ready.get('error', 'Unknown issue')}")
     elif action == "setup":
-        result = wsai.setup(backend=args.backend, model=args.model)
+        result = forgeai.setup(backend=args.backend, model=args.model)
         if "error" in result:
             print(f"\033[31m{result['error']}\033[0m")
         else:
@@ -692,7 +692,7 @@ def cmd_ai(args):
             if result.get("model"):
                 print(f"\033[32m✓\033[0m {b} configured — suggested model: {result['model']}")
     elif action == "benchmark":
-        result = wsai.benchmark_model(model=args.model, prompt=args.prompt, backend=args.backend)
+        result = forgeai.benchmark_model(model=args.model, prompt=args.prompt, backend=args.backend)
         if "error" in result:
             print(f"\033[31m{result['error']}\033[0m")
         else:
@@ -714,7 +714,7 @@ def cmd_deps(args):
 
 def cmd_exec(args):
     query = args.query
-    result = wsai.exec_nl(query, dry_run=args.dry_run)
+    result = forgeai.exec_nl(query, dry_run=args.dry_run)
     if "error" in result:
         print(f"\033[31m{result['error']}\033[0m")
         return

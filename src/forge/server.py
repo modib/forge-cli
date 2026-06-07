@@ -6,8 +6,8 @@ from mcp.types import Tool, TextContent
 from . import config as cfg
 from . import engine
 from . import git
-from . import graph as wsgraph
-from . import ai as wsai
+from . import graph as forgegraph
+from . import ai as forgeai
 from .cli import _completion_script
 
 app = Server("forge")
@@ -421,7 +421,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text="[]")]
 
         elif name == "generate_graph":
-            result = wsgraph.generate_graph(
+            result = forgegraph.generate_graph(
                 arguments["name"],
                 graph_type=arguments.get("graph_type", "co-change"),
                 depth=arguments.get("depth", 50),
@@ -446,7 +446,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=script)]
 
         elif name == "ai_detect":
-            profile = wsai.detect_hardware()
+            profile = forgeai.detect_hardware()
             return [TextContent(type="text", text=json.dumps(profile, indent=2))]
 
         elif name == "ai_config":
@@ -469,28 +469,28 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps(ai, indent=2))]
 
         elif name == "ai_setup":
-            result = wsai.setup(
+            result = forgeai.setup(
                 backend=arguments.get("backend"),
                 model=arguments.get("model"),
             )
             return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
         elif name == "exec_nl":
-            result = wsai.exec_nl(
+            result = forgeai.exec_nl(
                 arguments["query"],
                 dry_run=arguments.get("dry_run", False),
             )
             return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
         elif name == "ai_status":
-            result = wsai.check_model_ready(
+            result = forgeai.check_model_ready(
                 backend=arguments.get("backend"),
                 model=arguments.get("model"),
             )
             return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
         elif name == "ai_benchmark":
-            result = wsai.benchmark_model(
+            result = forgeai.benchmark_model(
                 model=arguments.get("model"),
                 prompt=arguments.get("prompt", "Hello"),
                 backend=arguments.get("backend"),
