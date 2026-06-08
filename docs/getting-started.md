@@ -1,16 +1,8 @@
 # Getting Started
 
-**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)** · **[Comparison](./comparison.md)**
 
 ---
-
-## Prerequisites
-
-- [Homebrew](https://brew.sh) (recommended) or [pipx](https://pipx.pypa.io) for installation
-- Python 3.10+
-- git 2.20+
-- (optional) [gh CLI](https://cli.github.com) for GitHub auth
-- (optional) [Ollama](https://ollama.ai) for local AI
 
 ## Install
 
@@ -21,142 +13,100 @@ brew tap modib/forge
 brew install forge-cli
 ```
 
-**Alternative — pipx** (works on any system, doesn't require Homebrew):
+**Alternative — pipx:**
 
 ```bash
 pipx install forge-cli
 ```
 
-Verify:
-
-```bash
-forge --version
-# forge 0.4.2
-```
-
 ## Initialize
 
 ```bash
+# This creates ~/.forge/ with default config and discovers repos in ~/Workspace:
 forge init --provider github
+
+# See where your config lives:
+forge config path
+
+# The default workspace root is ~/Workspace — set yours:
+forge config workspace-root /path/to/projects
 ```
 
-This creates workspace config. The config directory is:
-
-- `~/.forge/config.json` — primary (created by `forge init`)
-- `~/.workspace/config.json` — automatic fallback if `~/.forge/` doesn't exist
-
-Run `forge config path` after init to confirm the active path.
-
-Run `forge config path` after init to confirm the active path.
-
-```
-Initialized workspace at /home/user/.forge    # or ~/.workspace/ if migrating from ws-cli
-Workspace root: /home/user/Workspace
-Providers: github, gitlab
-```
-
-## Discover Repos
+## Daily Workflow
 
 ```bash
+# 1. Scan for new repos (also installs AI + pulls nomic-embed-text):
 forge scan
-```
 
-This finds all git repositories in `~/Workspace`, registers them, and parses their dependencies.
-
-```
-Scanned 12 repos in /home/user/Workspace
-Added 8 new repos:
-  + my-project
-  + another-project
-  + docs
-  ...
-Parsed 142 dependencies across 12 repos
-```
-
-## Check Status
-
-```bash
+# 2. See what's happening:
 forge status
-```
 
-Shows all registered repos with branch, dirty state, and ahead/behind:
-
-```
-Workspace: /home/user/Workspace
-Repos: 12 total
-  (2 dirty, 1 ahead, 3 behind)
-
-  my-project ●  main +2/-1
-    fix: resolve auth token refresh race
-  another-project  main
-    docs: update API reference
-  docs  master -3
-    Merge pull request #42 from user/fix-typo
-  ...
-```
-
-## Machine-Readable Output
-
-```bash
-forge status --json
-```
-
-Returns the full status as JSON — useful for scripts, AI agents, and pipeline integration.
-
-## Check Dev Environment
-
-```bash
-forge health
-```
-
-```
-Dev Environment Health
----------------------
-  ✓ brew
-  ✗ ollama
-  ✓ gh
-  ✓ python3
-  ✓ node
-  ✓ npm
-  ✓ gh auth
-
-Disk: 28.8% used (150.7 GB free of 228.0 GB)
-```
-
-## Scan for Vulnerabilities
-
-```bash
-# Refresh CVE data from OSV.dev
-forge cve refresh
-
-# List all known CVEs
-forge cve list
-
-# Security report
-forge cve report
-```
-
-## List Dependencies
-
-```bash
-# All deps across all projects
+# 3. Parse all dependencies:
 forge deps list
 
-# Filter by ecosystem
-forge deps list --ecosystem pypi
+# 4. Check for CVEs:
+forge cve refresh   # query OSV.dev for all known deps
+forge cve list      # show CVEs
+forge cve report    # full CVE report
 
-# Per-repo
-forge deps list --name my-project
-```
+# 5. Get fix info for a specific vulnerability
+forge cve fix CVE-2024-XXXXX   # shows safe upgrade path
 
-## Connect AI Agents
+# 6. Search workspace with natural language:
+forge ask "what packages use lodash?"
 
-```bash
+# 7. Execute commands with natural language:
+forge exec "show dirty repos"
+
+# 8. Manage features:
+forge feature create "refactor-auth" --repos frontend,api
+forge decision "renamed User model to Account" --breaking
+
+# 9. Start AI agent session:
+forge exec "start session for auth refactor"
+
+# 10. Hand off session context to another agent:
+forge agent handoff <session-id> --to codex
+
+# 11. Search past agent sessions:
+forge sessions search "auth"
+
+# 12. Start MCP server for AI agent integration:
 forge serve
 ```
 
-Starts the MCP stdio server with 24 tools. See the [MCP documentation](./mcp.md) for agent setup.
+## What's New in v0.5.0
+
+| Feature | Description |
+|---------|-------------|
+| `forge cve fix <id>` | Get fix versions, affected repos/lockfiles, and upgrade paths for CVEs |
+| `forge agent handoff <id> --to <agent>` | Package sessions into handoff documents for other agents |
+| `forge sessions search <query>` | Full-text search across session transcripts and metadata |
+| `forge sessions diff <a> <b>` | Structured diff between two agent sessions |
+| 2 new MCP tools | `cve_fix_info` + `agent_handoff` (26 total) |
+| 1 new intent | `cve_fix` added to exec intent map (23 total) |
+
+## Verify Setup
+
+```bash
+forge status          # shows all repos, branch, dirty state
+forge health          # checks brew, ollama, gh, python, node
+```
+
+If `forge init` can't find repos in `~/Workspace`, set a custom root:
+
+```bash
+forge config workspace-root /your/projects/path
+forge scan            # re-scan with updated root
+```
+
+## Next Steps
+
+- [Commands Reference](./commands.md) — Full CLI documentation
+- [MCP Server Setup](./mcp.md) — Connect AI agents to your workspace
+- [Architecture Overview](./architecture.md) — How forge works under the hood
+- [Comparison](./comparison.md) — Forge vs GitHub CLI vs GitHub MCP Server
 
 ---
 
-**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)** · **[Comparison](./comparison.md)**

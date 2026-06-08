@@ -1,10 +1,12 @@
 # MCP Server
 
-**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)** · **[Comparison](./comparison.md)**
 
 ---
 
 The `forge serve` command starts an MCP (Model Context Protocol) server over stdio. Any MCP-compatible AI agent — Claude Code, Codex CLI, Gemini CLI, Cursor — can connect and call workspace tools.
+
+Contrast with [GitHub MCP Server](https://github.com/github/github-mcp-server), which gives AI agents access to the GitHub API. Forge MCP Server gives AI agents access to the **local workspace** — repos on disk, git state, dependency trees, CVEs, agent sessions, and shared notes. They are complementary: use both in the same conversation.
 
 ## Quick Start
 
@@ -43,7 +45,7 @@ Add to `.codex/hooks.json` or configure in `~/.codex/config.json`:
 }
 ```
 
-## Tool Reference
+## Tool Reference (26 tools)
 
 ### Repository Tools
 
@@ -98,6 +100,13 @@ Scan workspace root for new git repositories.
 - **Args:** None
 - **Returns:** `{total, new: [name, ...]}`
 
+#### `validate_config`
+
+Validate workspace configuration and optionally repair issues.
+
+- **Args:** `fix` (boolean, optional)
+- **Returns:** `{valid, issues, _repaired?}`
+
 ### Feature Tools
 
 #### `create_feature`
@@ -141,6 +150,26 @@ Record the start of an agent session.
 
 Creates a session directory at `<active-dir>/sessions/<id>/` (run `forge config path` for the active directory) with `meta.json` and `transcript.md`.
 
+#### `agent_handoff`
+
+Hand off a session context to another agent.
+
+- **Args:** `session_id` (string, required), `target` (enum: `claude`|`codex`, required)
+- **Returns:** `{session_id, handoff_to, handoff_json, handoff_md, transcript_length, decisions_count}`
+
+Packages the session transcript, decisions, feature info, and workspace status into a handoff document that the target agent can read.
+
+### Security Tools
+
+#### `cve_fix_info`
+
+Get fix instructions for a CVE vulnerability.
+
+- **Args:** `vuln_id` (string, required — e.g., `GHSA-xxxx` or `CVE-2024-xxxx`)
+- **Returns:** `{vuln_id, summary, cvss_score, fix_versions: [{package, ecosystem, introduced, fixed}], affected_repos}`
+
+Queries OSV.dev for the full vulnerability detail, parses safe versions from the affected ranges, and maps them to the repos and lockfiles in your workspace.
+
 ### Context Tools
 
 #### `share_note`
@@ -174,15 +203,6 @@ Create PRs across all repos in a feature with cross-references.
 
 - **Args:** `feature_id` (string, required), `title` (string, optional), `body` (string, optional), `draft` (boolean, optional)
 - **Returns:** `{feature, id, prs: [{repo, status, url?}]}`
-
-### Config Tools
-
-#### `validate_config`
-
-Validate workspace configuration and optionally repair issues.
-
-- **Args:** `fix` (boolean, optional)
-- **Returns:** `{valid, issues, _repaired?}`
 
 ### Completion Tools
 
@@ -237,6 +257,17 @@ Execute a natural language workspace command (keyword → GitHub Models → loca
 - **Args:** `query` (string, required), `dry_run` (boolean, optional)
 - **Returns:** `{intent, command, output, resolved_by}`
 
+## Forge MCP vs GitHub MCP Server
+
+| | GitHub MCP Server | Forge MCP Server |
+|---|---|---|
+| **What it gives AI agents** | GitHub API access (issues, PRs, repos, Actions) | Local workspace intelligence (git state, deps, CVEs, sessions, notes) |
+| **Auth** | GitHub PAT with scopes | None — local filesystem |
+| **Infrastructure** | Docker required | Pure Python, no container |
+| **Offline** | No | Yes |
+| **Tools** | Issues, PRs, Actions, Dependabot, code scanning, discussions, repos, users, gists | Workspace status/health/doctor, deps, CVEs, features, sessions, handoff, notes, graphs |
+| **Use together?** | — | Yes — both MCP servers can run in the same agent session |
+
 ## Testing the MCP Server
 
 ```bash
@@ -248,10 +279,10 @@ printf '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion
 forge uses the [Model Context Protocol](https://modelcontextprotocol.io) over stdio. The server:
 
 1. Receives `initialize` request
-2. Responds with server capabilities (24 tools)
+2. Responds with server capabilities (26 tools)
 3. Handles `tools/list` and `tools/call` requests
 4. Returns results as `TextContent` in JSON-RPC responses
 
 ---
 
-**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)**
+**[Home](./index.md)** · **[Getting Started](./getting-started.md)** · **[Commands](./commands.md)** · **[MCP Server](./mcp.md)** · **[Architecture](./architecture.md)** · **[Comparison](./comparison.md)**

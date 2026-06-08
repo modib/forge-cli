@@ -4,6 +4,8 @@
 [![Release](https://github.com/modib/forge-cli/actions/workflows/release.yml/badge.svg)](https://github.com/modib/forge-cli/actions/workflows/release.yml)
 [![Homebrew](https://img.shields.io/badge/brew-modib%2Fforge-blue)](https://github.com/modib/homebrew-forge)
 
+> **`gh` and GitHub MCP Server talk to GitHub's API. Forge talks to your local workspace — all repos, git state, dependencies, CVEs, agent sessions, and shared decisions — and runs offline on old 8GB laptops with zero cloud dependencies.**
+
 **forge** is the command center for `~/Workspace`. It indexes git repos, tracks dependencies and CVEs, manages feature worktrees, shares context between projects, and exposes all operations as MCP tools for AI agents.
 
 ```bash
@@ -201,6 +203,7 @@ See [ROADMAP.md](./ROADMAP.md) for the development plan.
 ## Links
 
 - **Docs:** https://modib.github.io/forge-cli/
+- **Comparison:** https://modib.github.io/forge-cli/comparison (Forge CLI vs GitHub CLI vs GitHub MCP Server)
 - **Repo:** https://github.com/modib/forge-cli
 - **Forge Project:** https://github.com/modib/forge
 
