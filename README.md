@@ -1,5 +1,9 @@
 # forge — Cross-Project Workspace CLI
 
+[![CI](https://github.com/modib/forge-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/modib/forge-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/modib/forge-cli/actions/workflows/release.yml/badge.svg)](https://github.com/modib/forge-cli/actions/workflows/release.yml)
+[![Homebrew](https://img.shields.io/badge/brew-modib%2Fforge-blue)](https://github.com/modib/homebrew-forge)
+
 **forge** is the command center for `~/Workspace`. It indexes git repos, tracks dependencies and CVEs, manages feature worktrees, shares context between projects, and exposes all operations as MCP tools for AI agents.
 
 ```bash
@@ -21,10 +25,12 @@ AI coding agents (Claude Code, Codex, Cursor) are powerful, but they start blind
 
 - **See everything at once**: `forge status` shows all your repos with branch, dirty state, ahead/behind
 - **Know your dependencies**: `forge deps list` parses 6 lockfile formats across all repos; `forge cve list` shows known vulnerabilities
-- **Scan for CVEs**: `forge cve refresh` queries OSV.dev; `forge cve report` summarizes risk across your workspace
+- **Scan for CVEs**: `forge cve refresh` queries OSV.dev; `forge cve fix <id>` shows upgrade path; `forge cve report` summarizes risk
+- **Ask questions**: `forge ask "what uses lodash?"` — semantic search across READMEs, deps, and CVEs
 - **Share context across projects**: `forge share "deploy: run migrations first" --group backend` — all agents in that group see it
 - **Feature branches across repos**: `forge feature create "refactor-auth" --repos svc-a,svc-b` — creates git worktrees in one command
-- **MCP for AI agents**: `forge serve` exposes 24 tools over stdio — any MCP-compatible agent calls them directly
+- **Agent handoff**: `forge agent handoff <session-id> --to codex` — passes transcript + decisions between AI agents
+- **MCP for AI agents**: `forge serve` exposes 26 tools over stdio — any MCP-compatible agent calls them directly
 
 ## Quick Start
 
@@ -54,23 +60,28 @@ forge health
 | Command | Description |
 |---------|-------------|
 | `forge init [--provider github]` | Initialize workspace config + auth |
-| `forge scan` | Discover new git repos + parse deps |
+| `forge scan [--no-index]` | Discover new git repos + parse deps |
 | `forge status [name] [--json] [--graph]` | Show workspace/repo status |
 | `forge health` | Check dev environment (brew, ollama, gh, disk) |
-| `forge doctor` | Diagnose workspace issues |
+| `forge doctor [--json]` | Diagnose workspace issues |
 | `forge clone <url> [--name]` | Clone + register in workspace |
 | `forge feature create/list/worktree/done` | Manage feature branches |
 | `forge graph <name> [--type]` | Knowledge graph for any repo |
 | `forge pr create <feature>` | Create PRs with cross-references |
 | `forge share <content> [--group g]` | Share note across projects |
 | `forge notes [group]` | List shared notes |
-| `forge config [path\|validate\|remove-repo]` | Manage workspace configuration |
+| `forge config path\|validate\|remove-repo` | Manage workspace configuration |
 | `forge deps list [--name] [--ecosystem]` | List project dependencies |
-| `forge cve refresh\|list\|describe\|report` | CVE vulnerability scanning |
+| `forge cve refresh\|list\|describe\|report\|fix` | CVE vulnerability scanning |
+| `forge index` | Build RAG index for semantic search |
+| `forge ask <query>` | Ask a question about your workspace |
+| `forge sessions search\|diff` | Search and compare session history |
+| `forge agent handoff <sid> --to <agent>` | Hand off session context between agents |
 | `forge ai detect\|setup\|status\|config\|benchmark` | AI integration commands |
 | `forge exec <query>` | Natural language workspace command |
 | `forge install claude\|codex` | Install and configure AI agents |
-| `forge serve` | Start MCP stdio server (24 tools) |
+| `forge log [--json]` | View agent session history |
+| `forge serve` | Start MCP stdio server (26 tools) |
 | `forge completion bash\|zsh\|fish` | Generate shell completion script |
 
 ## MCP Server
@@ -82,13 +93,14 @@ Any MCP-compatible AI agent connects to forge via stdio:
 forge serve
 
 # In your AI agent (Claude Code, Codex, etc.):
-#   → forge serves 24 tools:
+#   → forge serves 26 tools:
 #     list_repos, repo_status, workspace_status, workspace_health,
 #     workspace_doctor, clone_repo, workspace_scan, create_feature,
 #     list_features, log_decision, get_decisions, start_session,
 #     share_note, get_shared_notes, generate_graph, create_prs,
 #     validate_config, generate_completion, ai_detect, ai_config,
-#     ai_setup, ai_status, ai_benchmark, exec_nl
+#     ai_setup, ai_status, ai_benchmark, exec_nl,
+#     cve_fix_info, agent_handoff
 ```
 
 **Claude Code setup:**
@@ -109,9 +121,11 @@ forge serve
 Agent (Claude Code / Codex)
   │ MCP stdio
   ▼
-forge serve ───→ 24 MCP tools
+forge serve ───→ 26 MCP tools
   │
-forge CLI ─────→ init, status, clone, feature, share, deps, cve, ai, exec
+forge CLI ─────→ 23 subcommands: init, scan, status, clone, health, doctor,
+                 feature, graph, pr, share, notes, config, deps, cve, index,
+                 ask, sessions, agent, ai, exec, install, log, serve
   │
   ▼
 subprocess: git, brew, gh, ollama
@@ -137,13 +151,29 @@ Once resolved, the active directory contains:
 ├── config.json       # Repos, groups, features, sessions, AI config
 ├── deps.json         # Parsed dependency cache (6 ecosystems)
 ├── cve.json          # OSV.dev vulnerability cache
+├── index.json        # RAG embedding index for forge ask
 ├── sessions/<id>/    # Agent session artifacts
 │   ├── meta.json
 │   └── transcript.md
+├── handoffs/         # Agent handoff documents
 └── .workspaces/      # Git worktrees for features
 ```
 
 All state is plain JSON. No server, no daemon, no lock-in.
+
+## CI/CD
+
+| Workflow | Status |
+|----------|--------|
+| **CI** (lint + test 3.12/3.13/3.14) | [![CI](https://github.com/modib/forge-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/modib/forge-cli/actions/workflows/ci.yml) |
+| **Release** (test + publish + update Homebrew tap) | [![Release](https://github.com/modib/forge-cli/actions/workflows/release.yml/badge.svg)](https://github.com/modib/forge-cli/actions/workflows/release.yml) |
+| **Homebrew tap** | [![Homebrew](https://img.shields.io/badge/brew-modib%2Fforge-blue)](https://github.com/modib/homebrew-forge) |
+
+Latest CI results (from [GitHub Actions](https://github.com/modib/forge-cli/actions?query=branch%3Amain)):
+
+- **Lint:** ruff + mypy — **All checks passed**
+- **Tests:** 334 passed across Python 3.12, 3.13, 3.14
+- **Test gate:** All tests must pass before every release — enforced by CI workflow
 
 ## Integration: graphify
 
@@ -158,7 +188,12 @@ forge graph my-project --type branches
 ```bash
 git clone https://github.com/modib/forge-cli
 cd forge-cli
-pipx install -e .
+pipx install -e ".[test,dev]"
+```
+
+Run tests locally:
+```bash
+pytest -v
 ```
 
 See [ROADMAP.md](./ROADMAP.md) for the development plan.
