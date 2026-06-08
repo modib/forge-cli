@@ -412,7 +412,7 @@ def _completion_script(shell):
     local cur prev words cword
     _init_completion || return
 
-    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai completion"
+    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai sessions agent completion"
     local feature_actions="create list worktree done"
     local pr_actions="create"
     local install_agents="claude codex"
@@ -469,7 +469,7 @@ def _completion_script(shell):
             COMPREPLY=($(compgen -W "$config_actions --fix" -- "$cur"))
             ;;
         cve)
-            COMPREPLY=($(compgen -W "refresh list describe report --ecosystem --min-score" -- "$cur"))
+            COMPREPLY=($(compgen -W "refresh list describe report fix --ecosystem --min-score" -- "$cur"))
             ;;
         ask)
             COMPREPLY=()
@@ -482,6 +482,12 @@ def _completion_script(shell):
             ;;
         log)
             COMPREPLY=($(compgen -W "--limit --json" -- "$cur"))
+            ;;
+        sessions)
+            COMPREPLY=($(compgen -W "search diff --limit" -- "$cur"))
+            ;;
+        agent)
+            COMPREPLY=($(compgen -W "handoff --to claude codex" -- "$cur"))
             ;;
         completion)
             COMPREPLY=($(compgen -W "bash zsh fish" -- "$cur"))
@@ -572,9 +578,9 @@ _forge() {
                     _arguments "1:action:(path validate remove-repo)" "--fix[Auto-repair fixable issues]"
                     ;;
                 cve)
-                    _arguments "1:action:(refresh list describe report)" \\
-                        "--ecosystem[Filter by ecosystem]:" \\
-                        "--min-score[Minimum CVSS score]:" \\
+                    _arguments "1:action:(refresh list describe report fix)" \
+                        "--ecosystem[Filter by ecosystem]:" \
+                        "--min-score[Minimum CVSS score]:" \
                         "--refresh[Re-fetch details from OSV.dev]"
                     ;;
                 index)
@@ -582,6 +588,15 @@ _forge() {
                     ;;
                 ask)
                     _arguments "1:query:Natural language question"
+                sessions)
+                    _arguments "1:action:(search diff)" \
+                        "2: :_forge_sessions" \
+                        "3: :_forge_sessions" \
+                        "--limit[Max results]:"
+                    ;;
+                agent)
+                    _arguments "1:action:(handoff)" "2: :_forge_sessions" "--to[Target agent]:(claude codex)"
+                    ;;
                 completion)
                     _arguments "1:shell:(bash zsh fish)"
                     ;;
@@ -606,11 +621,21 @@ _forge_features() {
     _values 'features' $features
 }
 
+_forge_sessions() {
+    local -a sessions
+    if [[ -f ~/.forge/config.json ]]; then
+        local json
+        json=$(command forge log --json --limit 50 2>/dev/null)
+        sessions=(${(f)"$(echo "$json" | command python3 -c \"import sys,json; [print(s['id']) for s in json.load(sys.stdin)]\" 2>/dev/null)"})
+    fi
+    _values 'sessions' $sessions
+}
+
 _forge "$@"
 '''
     elif shell == "fish":
         return '''function _forge_completions
-    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai completion
+    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai sessions agent completion
 
     # Top-level commands
     complete -c forge -f
@@ -667,10 +692,20 @@ _forge "$@"
     complete -c forge -n "__fish_seen_subcommand_from config; and __fish_seen_subcommand_from validate" -l fix
 
     # cve
-    complete -c forge -n "__fish_seen_subcommand_from cve; and not __fish_seen_subcommand_from refresh list describe report" -xa "refresh list describe report"
+    complete -c forge -n "__fish_seen_subcommand_from cve; and not __fish_seen_subcommand_from refresh list describe report fix" -xa "refresh list describe report fix"
     complete -c forge -n "__fish_seen_subcommand_from cve; and __fish_seen_subcommand_from list report" -l ecosystem -r
     complete -c forge -n "__fish_seen_subcommand_from cve; and __fish_seen_subcommand_from list report" -l min-score -r
     complete -c forge -n "__fish_seen_subcommand_from cve; and __fish_seen_subcommand_from describe" -l refresh
+
+    # sessions
+    complete -c forge -n "__fish_seen_subcommand_from sessions; and not __fish_seen_subcommand_from search diff" -xa "search diff"
+    complete -c forge -n "__fish_seen_subcommand_from sessions; and __fish_seen_subcommand_from search" -l limit -r
+    complete -c forge -n "__fish_seen_subcommand_from sessions; and __fish_seen_subcommand_from diff" -xa "(__forge_sessions)"
+
+    # agent
+    complete -c forge -n "__fish_seen_subcommand_from agent; and not __fish_seen_subcommand_from handoff" -xa "handoff"
+    complete -c forge -n "__fish_seen_subcommand_from agent; and __fish_seen_subcommand_from handoff" -l to -xa "claude codex" -r
+    complete -c forge -n "__fish_seen_subcommand_from agent; and __fish_seen_subcommand_from handoff" -xa "(__forge_sessions)"
 
     # completion
     complete -c forge -n "__fish_seen_subcommand_from completion" -xa "bash zsh fish"
@@ -682,6 +717,12 @@ function __forge_repos
     end
 end
 
+function __forge_sessions
+    if test -f ~/.forge/config.json
+        command forge log --json --limit 50 2>/dev/null | command python3 -c "import sys,json; [print(s['id']) for s in json.load(sys.stdin)]" 2>/dev/null
+    end
+end
+
 function __forge_features
     if test -f ~/.forge/config.json
         command forge feature list 2>/dev/null | grep -oP '^  \\K\\w+' 2>/dev/null || true
@@ -690,6 +731,57 @@ end
 '''
     else:
         return f"echo 'Unsupported shell: {shell}'"
+
+
+def cmd_sessions(args):
+    action = args.action
+    if action == "search":
+        results = engine.search_sessions(args.query, limit=args.limit)
+        if not results:
+            print("No matching sessions found")
+            return
+        print(f"Sessions matching \033[36m{args.query}\033[0m ({len(results)} results):\n")
+        for r in results:
+            s = r["session"]
+            sid = s.get("id", "?")
+            agent = s.get("agent", "?")
+            field = r["match_field"]
+            excerpt = r.get("excerpt", "")
+            if len(excerpt) > 120:
+                excerpt = excerpt[:117] + "..."
+            print(f"  \033[36m{sid}\033[0m  {agent}  [matched: {field}]")
+            print(f"    \033[90m{excerpt}\033[0m")
+            print()
+    elif action == "diff":
+        result = engine.diff_sessions(args.session_a, args.session_b)
+        if "error" in result:
+            print(f"\033[31m{result['error']}\033[0m")
+            return
+        print(f"\033[36mSession Diff: {result['session_a']} ↔ {result['session_b']}\033[0m")
+        print(f"  Agent:     {result['agent']['a']} → {result['agent']['b']}")
+        print(f"  Started:   {result['started']['a']} → {result['started']['b']}")
+        print(f"  Context:   {result['context']['a'][:80]} → {result['context']['b'][:80]}")
+        print(f"  Transcript: {result['transcript_length']['a']} chars → {result['transcript_length']['b']} chars")
+        if result.get("transcript_diff"):
+            print(f"\n  Transcript diff ({result['transcript_diff_lines']} lines, showing first 100):")
+            for line in result["transcript_diff"][:30]:
+                marker = "\033[32m" if line.startswith("+") else "\033[31m" if line.startswith("-") else "\033[90m"
+                print(f"  {marker}{line}\033[0m")
+
+
+def cmd_agent(args):
+    action = args.action
+    if action == "handoff":
+        result = engine.agent_handoff(args.session_id, args.to)
+        if "error" in result:
+            print(f"\033[31m{result['error']}\033[0m")
+            return
+        print(f"\033[36mAgent Handoff: {result['session_id']}\033[0m")
+        print(f"  From: {result.get('agent', '?')} → To: \033[32m{result['handoff_to']}\033[0m")
+        print(f"  Transcript: {result['transcript_length']} chars")
+        print(f"  Decisions:  {result['decisions_count']}")
+        print(f"\n  Handoff document: \033[90m{result['handoff_md']}\033[0m")
+        print(f"  \033[90m{result['handoff_json']}\033[0m")
 
 
 def cmd_ai(args):
@@ -837,6 +929,36 @@ def cmd_cve(args):
             print("\n  Top affected packages:")
             for pkg, count in result["top_packages"]:
                 print(f"    {pkg}  ({count})")
+    elif action == "fix":
+        result = forge_cve.fix_info(args.vuln_id)
+        if "error" in result:
+            print(f"\033[31m{result['error']}\033[0m")
+            return
+        print(f"\033[36m{result['vuln_id']}\033[0m  —  {result.get('summary', '')}")
+        if result.get("cvss_score") is not None:
+            print(f"  CVSS: \033[33m{result['cvss_score']:.1f}\033[0m")
+        if result.get("fix_versions"):
+            print("\n\033[36mRecommended fix versions:\033[0m")
+            for fv in result["fix_versions"]:
+                eco = fv["ecosystem"]
+                pkg = fv["package"]
+                fixed = fv["fixed"]
+                introduced = fv["introduced"]
+                print(f"  {eco}  {pkg}  {introduced} → \033[32m{fixed}\033[0m")
+        if result.get("affected_repos"):
+            print("\n\033[36mAffected repositories:\033[0m")
+            for repo_name, entries in result["affected_repos"].items():
+                for entry in entries:
+                    dep = entry["dep"]
+                    lockfiles = entry["lockfiles"]
+                    fix_vers = entry["fix_versions"]
+                    if fix_vers:
+                        target = fix_vers[0]["fixed"]
+                        print(f"  {repo_name}: {dep['name']}@{dep['version']} → \033[32m{target}\033[0m")
+                    else:
+                        print(f"  {repo_name}: {dep['name']}@{dep['version']}  (no fix version known)")
+                    for lf in lockfiles:
+                        print(f"    \033[90m{lf}\033[0m")
 
 
 def cmd_index(args):
@@ -972,7 +1094,7 @@ def main():
     p_deps.add_argument("--ecosystem", "-e", help="Filter by ecosystem (npm, cargo, pypi, go, rubygems)")
 
     p_cve = sub.add_parser("cve", help="CVE vulnerability scanning")
-    p_cve.add_argument("action", choices=["refresh", "list", "describe", "report"], help="CVE action")
+    p_cve.add_argument("action", choices=["refresh", "list", "describe", "report", "fix"], help="CVE action")
     p_cve.add_argument("name", nargs="?", help="Repository name (omit for all)")
     p_cve.add_argument("vuln_id", nargs="?", help="Vulnerability ID (for describe)")
     p_cve.add_argument("--ecosystem", "-e", help="Filter by ecosystem")
@@ -996,6 +1118,18 @@ def main():
     p_ai.add_argument("key", nargs="?", help="Config key for set/unset")
     p_ai.add_argument("value", nargs="?", help="Config value for set")
 
+    p_sessions = sub.add_parser("sessions", help="Search and compare session history")
+    p_sessions.add_argument("action", choices=["search", "diff"], help="Sessions action")
+    p_sessions.add_argument("query", nargs="?", help="Search query (for search action)")
+    p_sessions.add_argument("session_a", nargs="?", help="First session ID (for diff action)")
+    p_sessions.add_argument("session_b", nargs="?", help="Second session ID (for diff action)")
+    p_sessions.add_argument("--limit", type=int, default=10, help="Max results (default: 10)")
+
+    p_agent = sub.add_parser("agent", help="Manage agent sessions and handoffs")
+    p_agent.add_argument("action", choices=["handoff"], help="Agent action")
+    p_agent.add_argument("session_id", help="Session ID to hand off")
+    p_agent.add_argument("--to", required=True, choices=["claude", "codex"], help="Target agent")
+
     p_exec = sub.add_parser("exec", help="Execute natural language workspace command")
     p_exec.add_argument("query", help="Natural language query")
     p_exec.add_argument("--dry-run", action="store_true", help="Show intent without executing")
@@ -1017,6 +1151,8 @@ def main():
     cmds = {
         "init": cmd_init,
         "scan": cmd_scan,
+        "sessions": cmd_sessions,
+        "agent": cmd_agent,
         "status": cmd_status,
         "clone": cmd_clone,
         "health": cmd_health,

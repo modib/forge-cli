@@ -288,3 +288,89 @@ class TestDescribe:
         with patch("urllib.request.urlopen", urlopen):
             result = forge_cve.describe("CVE-2024-9999")
         assert result is None
+
+
+class TestParseFixVersions:
+    def test_parse_fix_versions_empty(self):
+        assert forge_cve._parse_fix_versions({}) == []
+
+    def test_parse_fix_versions_basic(self):
+        data = {
+            "affected": [{
+                "package": {"name": "lodash", "ecosystem": "npm"},
+                "ranges": [{
+                    "type": "ECOSYSTEM",
+                    "events": [
+                        {"introduced": "0"},
+                        {"fixed": "4.17.22"},
+                    ],
+                }],
+            }]
+        }
+        fixes = forge_cve._parse_fix_versions(data)
+        assert len(fixes) == 1
+        assert fixes[0]["package"] == "lodash"
+        assert fixes[0]["fixed"] == "4.17.22"
+
+    def test_parse_fix_versions_no_fixed(self):
+        data = {
+            "affected": [{
+                "package": {"name": "lodash", "ecosystem": "npm"},
+                "ranges": [{
+                    "type": "ECOSYSTEM",
+                    "events": [{"introduced": "0"}],
+                }],
+            }]
+        }
+        fixes = forge_cve._parse_fix_versions(data)
+        assert fixes[0]["fixed"] == "unknown"
+
+    def test_parse_fix_versions_skips_non_ecosystem(self):
+        data = {
+            "affected": [{
+                "package": {"name": "lodash", "ecosystem": "npm"},
+                "ranges": [{
+                    "type": "GIT",
+                    "events": [{"introduced": "abc"}, {"fixed": "def"}],
+                }],
+            }]
+        }
+        fixes = forge_cve._parse_fix_versions(data)
+        assert len(fixes) == 0
+
+
+class TestFixInfo:
+    def test_fix_info_network_error(self):
+        urlopen = MagicMock(side_effect=OSError("timeout"))
+        with patch("urllib.request.urlopen", urlopen):
+            result = forge_cve.fix_info("CVE-2024-9999")
+        assert "error" in result
+
+    def test_fix_info_success_no_affected_repos(self, tmp_path):
+        forge_cve.CVE_FILE = os.path.join(tmp_path, "cve.json")
+        forge_cve._save_cache({})
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps({
+            "id": "CVE-2024-1234",
+            "summary": "Test vuln",
+            "aliases": [],
+            "references": [],
+            "affected": [{
+                "package": {"name": "lodash", "ecosystem": "npm"},
+                "ranges": [{
+                    "type": "ECOSYSTEM",
+                    "events": [{"introduced": "0"}, {"fixed": "4.17.22"}],
+                }],
+            }],
+        }).encode()
+        mock_cm = MagicMock()
+        mock_cm.__enter__.return_value = mock_resp
+        urlopen = MagicMock(return_value=mock_cm)
+        forge_deps.DEPS_FILE = os.path.join(tmp_path, "deps.json")
+        forge_deps._save_deps_cache({})
+        with patch("urllib.request.urlopen", urlopen):
+            result = forge_cve.fix_info("CVE-2024-1234")
+        assert result["vuln_id"] == "CVE-2024-1234"
+        assert len(result["fix_versions"]) == 1
+        assert result["fix_versions"][0]["fixed"] == "4.17.22"
+        assert result["affected_repos"] == {}

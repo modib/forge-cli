@@ -75,6 +75,31 @@ def _query_osv(package_name, ecosystem, version):
     return out
 
 
+def _parse_fix_versions(data):
+    fixes = []
+    for affected in data.get("affected", []):
+        pkg = affected.get("package", {})
+        pkg_name = pkg.get("name", "")
+        ecosystem = pkg.get("ecosystem", "")
+        for rng in affected.get("ranges", []):
+            if rng.get("type") != "ECOSYSTEM":
+                continue
+            introduced = None
+            fixed = None
+            for event in rng.get("events", []):
+                if "introduced" in event:
+                    introduced = event["introduced"]
+                if "fixed" in event:
+                    fixed = event["fixed"]
+            fixes.append({
+                "package": pkg_name,
+                "ecosystem": ecosystem,
+                "introduced": introduced or "0",
+                "fixed": fixed or "unknown",
+            })
+    return fixes
+
+
 def _fetch_vuln_detail(vuln_id):
     ctx = ssl.create_default_context()
     req = urllib.request.Request(f"{OSV_VULN_URL}{vuln_id}")
@@ -104,7 +129,57 @@ def _fetch_vuln_detail(vuln_id):
                 cvss_score = 5.0
             elif severity == "LOW":
                 cvss_score = 2.5
-    return {"id": vuln_id, "summary": summary, "aliases": aliases, "cvss_score": cvss_score}
+    return {
+        "id": vuln_id,
+        "summary": summary,
+        "aliases": aliases,
+        "cvss_score": cvss_score,
+        "fix_versions": _parse_fix_versions(data),
+    }
+
+
+def _find_lockfiles_for_dep(repo_path, dep):
+    found = []
+    for fname in deps.PARSERS:
+        fpath = os.path.join(repo_path, fname)
+        if os.path.isfile(fpath):
+            found.append(fpath)
+    return found
+
+
+def fix_info(vuln_id):
+    detail = _fetch_vuln_detail(vuln_id)
+    if detail is None:
+        return {"error": f"Could not fetch details for {vuln_id}"}
+    cache = _load_cache()
+    affected_repos = {}
+    c = cfg.load_config()
+    for repo in c.get("repos", []):
+        repo_deps = deps.get_deps(repo_name=repo["name"])
+        for dep in repo_deps:
+            vulns = _vulns_for_dep(dep, cache)
+            if not any(v["id"] == vuln_id for v in vulns):
+                continue
+            lockfiles = _find_lockfiles_for_dep(repo["path"], dep)
+            fix_versions_for_dep = []
+            for fix in detail.get("fix_versions", []):
+                eco_map = {"npm": "npm", "cargo": "crates.io", "pypi": "PyPI", "go": "Go", "rubygems": "RubyGems"}
+                mapped_eco = eco_map.get(dep["ecosystem"], "")
+                if dep["name"] == fix["package"] and mapped_eco == fix["ecosystem"]:
+                    fix_versions_for_dep.append(fix)
+            if fix_versions_for_dep:
+                affected_repos.setdefault(repo["name"], []).append({
+                    "dep": dep,
+                    "fix_versions": fix_versions_for_dep,
+                    "lockfiles": lockfiles,
+                })
+    return {
+        "vuln_id": vuln_id,
+        "summary": detail.get("summary", ""),
+        "cvss_score": detail.get("cvss_score"),
+        "fix_versions": detail.get("fix_versions", []),
+        "affected_repos": affected_repos,
+    }
 
 
 def _vulns_for_dep(dep, cache):

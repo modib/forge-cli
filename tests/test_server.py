@@ -41,7 +41,9 @@ class TestListTools:
         assert "ai_setup" in names
         assert "ai_benchmark" in names
         assert "ai_status" in names
-        assert len(names) == 24
+        assert "cve_fix_info" in names
+        assert "agent_handoff" in names
+        assert len(names) == 26
 
     def test_tool_has_schema(self):
         from forge.server import list_tools

@@ -418,3 +418,170 @@ class TestCreatePrs:
         body_idx = create_args.index("--body") + 1
         assert create_args[title_idx] == "Custom Title"
         assert create_args[body_idx] == "Custom body text"
+
+
+class TestAgentHandoff:
+    def test_handoff_session_not_found(self):
+        result = engine.agent_handoff("nonexistent", "claude")
+        assert "error" in result
+
+    def test_handoff_success(self, forge_config, tmp_forge_workspace):
+        forge_dir, workspace_root, _ = tmp_forge_workspace
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({
+            "id": "sess-test123",
+            "agent": "claude",
+            "started": "2026-06-08T00:00:00",
+            "context": "Working on auth module",
+            "feature": "",
+        })
+        forge_config.save_config(c)
+        import json
+        meta_path = forge_dir / "sessions" / "sess-test123" / "meta.json"
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(meta_path, "w") as f:
+            json.dump({"id": "sess-test123", "agent": "claude"}, f)
+        transcript_path = forge_dir / "sessions" / "sess-test123" / "transcript.md"
+        with open(transcript_path, "w") as f:
+            f.write("This is a transcript of the session.")
+        result = engine.agent_handoff("sess-test123", "codex")
+        assert result["session_id"] == "sess-test123"
+        assert result["handoff_to"] == "codex"
+        assert result["transcript_length"] > 0
+        assert os.path.exists(result["handoff_md"])
+        assert os.path.exists(result["handoff_json"])
+
+    def test_handoff_with_feature(self, forge_config, tmp_forge_workspace):
+        forge_dir, workspace_root, _ = tmp_forge_workspace
+        c = forge_config.load_config()
+        engine.add_feature("login-flow", repos=["repo-a", "repo-b"])
+        c = forge_config.load_config()
+        feature = c["features"][0]
+        feature["decisions"].append({
+            "timestamp": "2026-01-01T00:00:00",
+            "message": "Use OAuth2 for auth",
+            "type": "breaking",
+            "author": "bobby",
+        })
+        forge_config.save_config(c)
+        c.setdefault("sessions", []).append({
+            "id": "sess-feat456",
+            "agent": "codex",
+            "started": "2026-06-08T01:00:00",
+            "context": "Implementing OAuth2",
+            "feature": feature["id"],
+        })
+        forge_config.save_config(c)
+        import json
+        meta_path = forge_dir / "sessions" / "sess-feat456" / "meta.json"
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(meta_path, "w") as f:
+            json.dump({"id": "sess-feat456", "agent": "codex", "feature": feature["id"]}, f)
+        transcript_path = forge_dir / "sessions" / "sess-feat456" / "transcript.md"
+        with open(transcript_path, "w") as f:
+            f.write("Implementing OAuth2 flow")
+        result = engine.agent_handoff("sess-feat456", "claude")
+        assert result["decisions_count"] == 1
+        md_content = open(result["handoff_md"]).read()
+        assert "OAuth2" in md_content
+
+
+class TestSearchSessions:
+    def test_search_empty(self, forge_config):
+        assert engine.search_sessions("anything") == []
+
+    def test_search_by_id(self, forge_config):
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-abc123", "agent": "claude", "context": "", "feature": ""})
+        forge_config.save_config(c)
+        results = engine.search_sessions("abc123")
+        assert len(results) == 1
+        assert results[0]["match_field"] == "id"
+
+    def test_search_by_agent(self, forge_config):
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-1", "agent": "codex", "context": "", "feature": ""})
+        c.setdefault("sessions", []).append({"id": "sess-2", "agent": "claude", "context": "", "feature": ""})
+        forge_config.save_config(c)
+        results = engine.search_sessions("codex")
+        assert len(results) == 1
+
+    def test_search_by_context(self, forge_config):
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-1", "agent": "claude", "context": "Working on OAuth2 authentication", "feature": ""})
+        forge_config.save_config(c)
+        results = engine.search_sessions("OAuth2")
+        assert len(results) == 1
+        assert results[0]["match_field"] == "context"
+
+    def test_search_by_transcript(self, forge_config, tmp_forge_workspace):
+        forge_dir, _, _ = tmp_forge_workspace
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-trans", "agent": "claude", "context": "", "feature": ""})
+        forge_config.save_config(c)
+        import json
+        meta_path = forge_dir / "sessions" / "sess-trans" / "meta.json"
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(meta_path, "w") as f:
+            json.dump({"id": "sess-trans"}, f)
+        transcript_path = forge_dir / "sessions" / "sess-trans" / "transcript.md"
+        with open(transcript_path, "w") as f:
+            f.write("We decided to use Redis for caching")
+        results = engine.search_sessions("Redis")
+        assert len(results) == 1
+        assert results[0]["match_field"] == "transcript"
+
+    def test_search_limit(self, forge_config):
+        c = forge_config.load_config()
+        for i in range(5):
+            c.setdefault("sessions", []).append({"id": f"sess-{i}", "agent": "claude", "context": "work", "feature": ""})
+        forge_config.save_config(c)
+        results = engine.search_sessions("work", limit=2)
+        assert len(results) == 2
+
+
+class TestDiffSessions:
+    def test_diff_nonexistent(self, forge_config):
+        result = engine.diff_sessions("does-not-exist", "also-not")
+        assert "error" in result
+
+    def test_diff_same_session(self, forge_config, tmp_forge_workspace):
+        forge_dir, _, _ = tmp_forge_workspace
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-a", "agent": "claude", "context": "Hello", "feature": ""})
+        forge_config.save_config(c)
+        import json
+        meta_path = forge_dir / "sessions" / "sess-a" / "meta.json"
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(meta_path, "w") as f:
+            json.dump({"id": "sess-a"}, f)
+        transcript_path = forge_dir / "sessions" / "sess-a" / "transcript.md"
+        with open(transcript_path, "w") as f:
+            f.write("content a")
+        result = engine.diff_sessions("sess-a", "sess-a")
+        assert "error" not in result
+        assert result["transcript_diff_lines"] == 0
+
+    def test_diff_different_sessions(self, forge_config, tmp_forge_workspace):
+        forge_dir, _, _ = tmp_forge_workspace
+        c = forge_config.load_config()
+        c.setdefault("sessions", []).append({"id": "sess-x", "agent": "claude", "context": "Auth module", "feature": ""})
+        c.setdefault("sessions", []).append({"id": "sess-y", "agent": "codex", "context": "Caching layer", "feature": ""})
+        forge_config.save_config(c)
+        import json
+        for sid in ("sess-x", "sess-y"):
+            meta_path = forge_dir / "sessions" / sid / "meta.json"
+            meta_path.parent.mkdir(parents=True, exist_ok=True)
+            agent = "claude" if sid == "sess-x" else "codex"
+            context = "Auth module" if sid == "sess-x" else "Caching layer"
+            with open(meta_path, "w") as f:
+                json.dump({"id": sid, "agent": agent, "context": context}, f)
+            transcript_path = forge_dir / "sessions" / sid / "transcript.md"
+            with open(transcript_path, "w") as f:
+                f.write(f"Transcript for {sid}")
+        result = engine.diff_sessions("sess-x", "sess-y")
+        assert result["agent"]["a"] == "claude"
+        assert result["agent"]["b"] == "codex"
+        assert result["context"]["a"] == "Auth module"
+        assert result["context"]["b"] == "Caching layer"
+        assert result["transcript_diff_lines"] > 0

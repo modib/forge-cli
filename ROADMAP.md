@@ -47,7 +47,7 @@
 - [x] Apple Silicon detection + MLX backend support (M1–M4 unified memory)
 - [x] Dual model suggestion: Ollama (Gemma 2B/7B GGUF) on Intel/Linux, MLX (Qwen2.5-Coder safetensors) on Apple Silicon
 - [x] Model routing: local ↔ BYO key ↔ GitHub Models free tier
-- [ ] Session packing: `forge session summarize <id>` → compact context
+- [ ] Session packing: `forge sessions summarize <id>` → compact context (moved to v0.6)
 
 ## v0.4 — Dependency Intelligence & Security
 
@@ -82,14 +82,14 @@
 - [x] 22 intents in keyword router (was 8), length-best-match sorting
 - [x] docs updated for v0.4.x features (CVE, deps, config, RAG, exec intents)
 
-## v0.5 — Agent Handoff & Dashboard
+## v0.5 — Agent Handoff & Dashboard (shipping now)
 
 **Agents pass context. Sessions are searchable. CVE-aware agent spawning.**
 
-- [ ] `forge cve fix <id>` — spawn agent with CVE context to auto-fix
-- [ ] Agent handoff: `forge agent handoff <session-id> --to codex`
-- [ ] Session search: `forge sessions search "decision about auth"`
-- [ ] Session diff: `forge sessions diff <id-a> <id-b>`
+- [x] `forge cve fix <id>` — spawn agent with CVE context to auto-fix
+- [x] Agent handoff: `forge agent handoff <session-id> --to codex`
+- [x] Session search: `forge sessions search "decision about auth"`
+- [x] Session diff: `forge sessions diff <id-a> <id-b>`
 - [ ] `forge dashboard` — TUI for agents, worktrees, CVEs, decisions
 - [ ] GitHub issues: `forge session <id> --to-issue`
 

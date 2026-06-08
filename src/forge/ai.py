@@ -411,6 +411,7 @@ _INTENT_MAP = {
     "cve_refresh": ["find vulnerable", "vulnerabilities", "find cve", "find security", "vulnerable", "security issues", "security audit", "cve issues", "cve"],
     "cve_report": ["security report", "vulnerability summary", "risk report"],
     "cve_describe": ["cve details", "describe cve"],
+    "cve_fix": ["fix cve", "fix vulnerability", "resolve cve", "apply cve fix", "patch cve"],
     "deps_list": ["list dependencies", "show dependencies", "list deps", "dependencies", "what packages"],
     "feature_list": ["list features", "active features", "show features", "features"],
     "feature_create": ["create feature", "new feature", "start feature"],
@@ -437,6 +438,7 @@ _INTENT_COMMANDS = {
     "cve_refresh": "forge cve refresh && forge cve list",
     "cve_report": "forge cve report",
     "cve_describe": "forge cve describe",
+    "cve_fix": "forge cve fix",
     "deps_list": "forge deps list",
     "feature_list": "forge feature list",
     "feature_create": "forge feature create",
@@ -465,6 +467,7 @@ Available intents:
 - cve_refresh: Find and list vulnerabilities (keywords: CVE, security, vulnerable)
 - cve_report: Generate security vulnerability report
 - cve_describe: Show details for a specific CVE
+- cve_fix: Get fix instructions for a CVE (keywords: fix cve, fix vulnerability, resolve, patch)
 - deps_list: List project dependencies
 - feature_list: List active feature branches
 - feature_create: Create a new feature

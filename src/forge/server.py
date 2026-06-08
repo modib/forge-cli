@@ -208,6 +208,29 @@ async def list_tools() -> list[Tool]:
             },
         ),
         Tool(
+            name="cve_fix_info",
+            description="Get fix instructions for a CVE vulnerability — affected repos, packages, and safe versions",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "vuln_id": {"type": "string", "description": "Vulnerability ID (e.g., GHSA-xxxx or CVE-xxxx)"},
+                },
+                "required": ["vuln_id"],
+            },
+        ),
+        Tool(
+            name="agent_handoff",
+            description="Hand off a session context to another agent (claude or codex)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string", "description": "Session ID to hand off"},
+                    "target": {"type": "string", "enum": ["claude", "codex"], "description": "Target agent"},
+                },
+                "required": ["session_id", "target"],
+            },
+        ),
+        Tool(
             name="ai_detect",
             description="Detect hardware profile (CPU, RAM, GPU, disk)",
             inputSchema={"type": "object", "properties": {}},
@@ -444,6 +467,15 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "generate_completion":
             script = _completion_script(arguments["shell"])
             return [TextContent(type="text", text=script)]
+
+        elif name == "cve_fix_info":
+            from . import cve as forge_cve
+            result = forge_cve.fix_info(arguments["vuln_id"])
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+        elif name == "agent_handoff":
+            result = engine.agent_handoff(arguments["session_id"], arguments["target"])
+            return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
         elif name == "ai_detect":
             profile = forgeai.detect_hardware()
