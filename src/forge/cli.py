@@ -412,7 +412,7 @@ def _completion_script(shell):
     local cur prev words cword
     _init_completion || return
 
-    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai sessions agent completion"
+    local subcmds="init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai sessions agent dashboard completion"
     local feature_actions="create list worktree done"
     local pr_actions="create"
     local install_agents="claude codex"
@@ -530,6 +530,7 @@ _forge() {
                 "index[Build RAG index for semantic search]" \\
                 "ask[Ask a question about your workspace]" \\
                 "completion[Generate shell completion scripts]"
+                "dashboard[Launch interactive TUI dashboard]"
             ;;
         args)
             case $words[1] in
@@ -635,7 +636,7 @@ _forge "$@"
 '''
     elif shell == "fish":
         return '''function _forge_completions
-    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai sessions agent completion
+    set -l cmds init scan status clone health doctor feature graph install log notes pr share serve config deps cve index ask ai sessions agent dashboard completion
 
     # Top-level commands
     complete -c forge -f
@@ -978,6 +979,16 @@ def cmd_serve(args):
     asyncio.run(run_server())
 
 
+def cmd_dashboard(args):
+    try:
+        from .tui import run_dashboard
+        run_dashboard()
+    except ImportError:
+        print("Dashboard requires Textual.\n"
+              "Install: pip install forge-cli[dashboard]")
+        sys.exit(1)
+
+
 def cmd_config_path(args):
     if args.sub == "validate":
         result = engine.validate_config(fix=args.fix)
@@ -1061,6 +1072,8 @@ def main():
     p_notes.add_argument("group", nargs="?", default="default", help="Group name")
 
     sub.add_parser("serve", help="Start MCP server (stdio)")
+
+    sub.add_parser("dashboard", help="Launch interactive TUI dashboard")
 
     p_log = sub.add_parser("log", help="View agent session history")
     p_log.add_argument("name", nargs="?", help="Session ID to view details")
@@ -1165,6 +1178,7 @@ def main():
         "share": cmd_share,
         "notes": cmd_notes,
         "serve": cmd_serve,
+        "dashboard": cmd_dashboard,
         "config": cmd_config_path,
         "deps": cmd_deps,
         "cve": cmd_cve,

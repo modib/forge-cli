@@ -1,6 +1,6 @@
 [project]
 name = "forge-cli"
-version = "0.5.0"
+version = "0.5.1"
 description = "Forge — local-first AI workspace toolkit for Forge OS"
 requires-python = ">=3.10"
 authors = [{ name = "Forge" }]
@@ -16,6 +16,7 @@ where = ["src"]
 [project.optional-dependencies]
 test = ["pytest", "pytest-mock", "pytest-asyncio"]
 dev = ["ruff", "mypy"]
+dashboard = ["textual>=2.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
